@@ -1,0 +1,119 @@
+# RedForge - redis-from-scratch (.gitignore)
+# Go 1.22, stdlib only. Covers build, runtime, bench, and local tooling.
+
+# ---------- Go build outputs ----------
+bin/
+dist/
+*.exe
+*.out
+*.o
+*.a
+*.so
+*.test
+*.prof
+
+# Go module / workspace noise (stdlib only, no require block expected)
+/vendor/
+go.work
+go.work.sum
+
+# Go test / coverage / profiling
+coverage.out
+coverage.html
+coverage.txt
+*.coverprofile
+cpu.prof
+mem.prof
+block.prof
+mutex.prof
+trace.out
+testcache/
+
+# ---------- Server runtime data (never commit) ----------
+# Local data dirs used via --dir, --port, make demo/test
+data/
+/tmp/rfs-*/
+*.aof
+*.snap
+dump.snap
+dump.snap.tmp-*
+*.rdb
+appendonly.aof
+appendonlydir/
+nodes.conf
+*.log
+
+# Orphan / temp files from crash-recovery and BGSAVE tests
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# ---------- Bench and evaluation generated outputs ----------
+# Scoped to results/ so committed fixtures (e.g. bench testdata CSVs) still track.
+bench/results/
+perf.data
+perf.data.old
+flamegraph.svg
+*.flamegraph
+
+# LaTeX / report intermediates (keep final REPORT.md / PDF sources)
+*.aux
+*.toc
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.bbl
+*.blg
+
+# Office lock / temp files (keep committed .docx sources)
+~$*.docx
+~$*.doc
+~$*.xlsx
+*.wbk
+*.tmp.docx
+
+# ---------- Docker / compose local overrides ----------
+docker-compose.override.yml
+docker-compose.override.yaml
+.compose/
+.docker/
+
+# ---------- Local env and secrets (never commit) ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+secrets/
+
+# ---------- Logs ----------
+logs/
+server.log
+test-server-*.log
+
+# ---------- OS / editor / IDE ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.code-workspace
+.vim/
+.nvim/
+*.sublime-project
+*.sublime-workspace
+.direnv/
+.envrc.local
+
+# ---------- Python helpers (charts / tooling) ----------
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
