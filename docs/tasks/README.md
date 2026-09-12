@@ -10,12 +10,12 @@ Owners are suggestions from the implementation plan. Anyone may take any task, b
 
 | Task | Title | Item | Depends on | Effort | Status |
 |---|---|---|---|---|---|
-| [T0.01](t0-01-repo-skeleton-ci.md) | Repository skeleton, Makefile and CI | M9, M11 | none | 2 to 3 h | In review (PR #72) |
-| [T0.02](t0-02-resp-reader.md) | RESP2 reader | M1 | T0.01 | 3 to 4 h | |
-| [T0.03](t0-03-resp-writer.md) | RESP2 writer and reply types | M1 | T0.01 | 2 h | |
-| [T0.04](t0-04-epoll-listener.md) | Epoll listener and connection registry | M2 | T0.01 | 5 to 6 h | |
-| [T0.05](t0-05-buffers-pipelining.md) | Buffers, incremental parsing, pipelining | M1, M2 | T0.02, T0.04 | 3 to 4 h | |
-| [T0.06](t0-06-dispatcher-ping-echo.md) | Command table, dispatcher, PING, ECHO, QUIT | M1 | T0.03, T0.05 | 2 to 3 h | |
+| [T0.01](t0-01-repo-skeleton-ci.md) | Repository skeleton, Makefile and CI | M9, M11 | none | 2 to 3 h | Merged (PR #72) |
+| [T0.02](t0-02-resp-reader.md) | RESP2 reader | M1 | T0.01 | 3 to 4 h | In review (PR #73) |
+| [T0.03](t0-03-resp-writer.md) | RESP2 writer and reply types | M1 | T0.01 | 2 h | In review (PR #74) |
+| [T0.04](t0-04-epoll-listener.md) | Epoll listener and connection registry | M2 | T0.01 | 5 to 6 h | In review (PR #75) |
+| [T0.05](t0-05-buffers-pipelining.md) | Buffers, incremental parsing, pipelining | M1, M2 | T0.02, T0.04 | 3 to 4 h | In review (PR #76) |
+| [T0.06](t0-06-dispatcher-ping-echo.md) | Command table, dispatcher, PING, ECHO, QUIT | M1 | T0.03, T0.05 | 2 to 3 h | In review (PR #77) |
 | [T0.07](t0-07-store-types.md) | Store types, Entry, Value, Clock, map store | M3 | T0.01 | 3 h | |
 | [T0.08](t0-08-seq-and-propagate.md) | Sequence counter and Propagate hook | M7, M8 | T0.06, T0.07 | 2 h | |
 | [T0.09](t0-09-tooling-smoke-test.md) | Client tooling smoke test | M1 | T0.06 | 1 to 2 h | |
