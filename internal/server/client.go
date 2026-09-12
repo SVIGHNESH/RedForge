@@ -24,3 +24,7 @@ func (c *Client) FD() int { return c.fd }
 // written. Handlers call this instead of closing the socket themselves,
 // because the reply to QUIT still has to reach the client.
 func (c *Client) Close() { c.closing = true }
+
+// Closing reports whether the client is waiting to be closed once its output
+// has drained.
+func (c *Client) Closing() bool { return c.closing }

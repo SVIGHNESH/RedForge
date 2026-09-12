@@ -5,9 +5,15 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
+	"github.com/SVIGHNESH/RedForge/internal/command"
 	"github.com/SVIGHNESH/RedForge/internal/server"
 )
+
+// nowMs is the loop's clock. T0.07 replaces it with the injectable Clock
+// interface so tests can freeze time.
+func nowMs() int64 { return time.Now().UnixMilli() }
 
 func main() {
 	var (
@@ -23,6 +29,7 @@ func main() {
 	}
 
 	srv := server.New()
+	command.Install(srv, nowMs)
 	if err := srv.Listen(*bind, *port); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
