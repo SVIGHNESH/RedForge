@@ -18,25 +18,98 @@ Phase 0 of [the task board](docs/tasks/README.md) is merged: the RESP2 codec, th
 | Pipelining, partial reads, protocol errors | expiry (T3.x), the append-only log (T5.x) |
 | 100+ connections on one thread | snapshots and recovery (T6.x) |
 
-## Try it
+## Usage
+
+### Build and run
 
 ```sh
-make build
-./bin/redis-from-scratch --port 6380
+make build                                   # -> bin/redis-from-scratch
+./bin/redis-from-scratch                     # 127.0.0.1:6380
+./bin/redis-from-scratch --port 6390         # somewhere else
+./bin/redis-from-scratch --bind 0.0.0.0      # listen on every interface
+./bin/redis-from-scratch --version           # 0.1.0-rfs
 ```
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--port` | `6380` | Port to listen on. Not 6379, so it can run beside a real Redis. |
+| `--bind` | `127.0.0.1` | IPv4 address to bind. |
+| `--version` | | Print the version and exit. |
+
+Stop the server with Ctrl-C.
+The persistence and replication flags (`--dir`, `--appendfsync`, `--replicaof`) land with their tasks.
+
+### Talk to it with redis-cli
 
 ```sh
 $ redis-cli -p 6380 PING
 PONG
+$ redis-cli -p 6380 PING hello
+hello
 $ redis-cli -p 6380 ECHO hi
 hi
+```
+
+Interactive mode works, and `quit` exits cleanly:
+
+```sh
+$ redis-cli -p 6380
+127.0.0.1:6380> PING
+PONG
+127.0.0.1:6380> quit
+```
+
+Anything outside the command set is refused in Redis's own wording:
+
+```sh
 $ redis-cli -p 6380 FOO a b
 ERR unknown command 'FOO', with args beginning with: 'a' 'b'
-$ redis-benchmark -p 6380 -t ping -n 100000 -P 16 -q
+$ redis-cli -p 6380 HELLO
+ERR unknown command 'HELLO', with args beginning with:
+$ redis-cli -p 6380 ECHO
+ERR wrong number of arguments for 'echo' command
+```
+
+### Talk to it with nc
+
+Inline commands work, so the server is reachable from `nc` and `telnet`.
+Two commands in one write get two replies, which is pipelining:
+
+```sh
+$ printf 'PING\r\nPING\r\n' | nc -q1 localhost 6380
++PONG
++PONG
+```
+
+A malformed frame earns a protocol error and a closed connection, rather than a desynchronised stream:
+
+```sh
+$ printf '*1\r\n+x\r\n' | nc -q1 localhost 6380
+-ERR Protocol error: expected '$', got something else
+```
+
+### Benchmark
+
+```sh
+$ redis-benchmark -p 6380 -t ping -n 100000 -q          # one command at a time
+$ redis-benchmark -p 6380 -t ping -n 100000 -P 16 -q    # 16 deep pipeline
 PING_MBULK: 714285.69 requests per second, p50=1.103 msec
 ```
 
-The default port is **6380**, not 6379, so the server can run next to a real Redis for comparison.
+### Watch the design hold
+
+The point of the epoll loop is that connections do not cost threads.
+These two tests assert it, rather than merely demonstrating it:
+
+```sh
+go test ./internal/server -run 'HundredConnections|LeakNoDescriptors' -v -count=1
+```
+
+The parser runs on bytes a stranger controls, so it is fuzzed:
+
+```sh
+go test ./internal/resp -fuzz FuzzParse -fuzztime 30s
+```
 
 ## Design
 
@@ -97,9 +170,6 @@ make bench   # see bench/
 
 Integration tests need `redis-tools` installed for `redis-cli` and `redis-benchmark`.
 A single package: `go test ./internal/store -run TestName -v`.
-
-Server flags: `--port 6380`, `--bind 127.0.0.1`.
-The persistence and replication flags land with their tasks.
 
 ## Documentation
 
