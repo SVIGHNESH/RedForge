@@ -6,7 +6,7 @@ A Redis-compatible server written from scratch in Go, using only the standard li
 There is no `net` package, no goroutine per connection and no dependency: one thread, one `epoll` loop, one keyspace.
 
 B.Tech final-year project.
-Module path `github.com/SVIGHNESH/RedForge`, Go 1.22, Linux only.
+Module path `github.com/SVIGHNESH/RedForge`, Go 1.22, **Linux only** (see [Linux only](#linux-only)).
 
 ## Status
 
@@ -38,6 +38,15 @@ make build                                   # -> bin/redis-from-scratch
 
 Stop the server with Ctrl-C.
 The persistence and replication flags (`--dir`, `--appendfsync`, `--replicaof`) land with their tasks.
+
+### Linux only
+
+The server is a raw `epoll` loop, so it builds and runs on Linux and nowhere else.
+`GOOS=windows go build ./...` fails on `undefined: syscall.EpollCreate1`, and macOS fails the same way, because `epoll` is a Linux kernel interface with no equivalent exposed under those names.
+This is a constraint of the project, not a gap: the synopsis rules out a portability layer, so there is deliberately no `net`-package fallback.
+
+On Windows, use WSL2, a Linux VM, or Docker.
+`internal/resp` and `internal/command` are pure Go and build anywhere; only the server does not.
 
 ### Talk to it with redis-cli
 
