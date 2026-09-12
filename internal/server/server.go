@@ -42,6 +42,8 @@ type Server struct {
 
 	// Execute is called after each read with new bytes in c.rbuf.
 	Execute ExecuteFunc
+	// command runs one parsed command; the dispatcher is installed here.
+	command CommandFunc
 
 	// Tick runs once per EpollWait timeout, on the loop thread.
 	Tick func(s *Server)
@@ -54,21 +56,16 @@ type Server struct {
 	rejectedConnection atomic.Int64
 }
 
-// New returns a server that is not yet listening. Execute defaults to echoing
-// whatever arrives, which is how T0.04 proves the loop works end to end.
+// New returns a server that is not yet listening. Execute defaults to parsing
+// RESP frames out of the read buffer and answering each one.
 func New() *Server {
 	return &Server{
 		clients: make(map[int]*Client),
 		events:  make([]syscall.EpollEvent, maxEvents),
 		scratch: make([]byte, readChunk),
-		Execute: echoExecute,
+		Execute: execute,
+		command: defaultCommand,
 	}
-}
-
-func echoExecute(_ *Server, c *Client) int {
-	n := len(c.rbuf)
-	c.wbuf = append(c.wbuf, c.rbuf...)
-	return n
 }
 
 // Listen creates the listening socket and the epoll instance. It must be
