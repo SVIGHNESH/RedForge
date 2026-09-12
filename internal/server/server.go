@@ -48,6 +48,10 @@ type Server struct {
 	// Tick runs once per EpollWait timeout, on the loop thread.
 	Tick func(s *Server)
 
+	// pendingLog holds the canonical form of writes executed on this tick,
+	// in loop order. T0.08 attaches sequence numbers, T5.02 writes the log.
+	pendingLog [][][]byte
+
 	stopping atomic.Bool
 
 	connectedClients   atomic.Int64
@@ -339,3 +343,16 @@ func (s *Server) TotalCommands() int64 { return s.totalCommands.Load() }
 
 // AddCommandsProcessed advances the command counter; the dispatcher owns it.
 func (s *Server) AddCommandsProcessed(n int64) { s.totalCommands.Add(n) }
+
+// AppendPending records a write in the order the loop executed it. T0.08
+// replaces this with the sequence counter and T5.02 with the real log.
+func (s *Server) AppendPending(args [][]byte) {
+	s.pendingLog = append(s.pendingLog, args)
+}
+
+// TakePending returns and clears the pending writes.
+func (s *Server) TakePending() [][][]byte {
+	out := s.pendingLog
+	s.pendingLog = nil
+	return out
+}
