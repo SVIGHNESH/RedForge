@@ -10,7 +10,7 @@ Owners are suggestions from the implementation plan. Anyone may take any task, b
 
 | Task | Title | Item | Depends on | Effort | Status |
 |---|---|---|---|---|---|
-| [T0.01](t0-01-repo-skeleton-ci.md) | Repository skeleton, Makefile and CI | M9, M11 | none | 2 to 3 h | |
+| [T0.01](t0-01-repo-skeleton-ci.md) | Repository skeleton, Makefile and CI | M9, M11 | none | 2 to 3 h | In review (PR #72) |
 | [T0.02](t0-02-resp-reader.md) | RESP2 reader | M1 | T0.01 | 3 to 4 h | |
 | [T0.03](t0-03-resp-writer.md) | RESP2 writer and reply types | M1 | T0.01 | 2 h | |
 | [T0.04](t0-04-epoll-listener.md) | Epoll listener and connection registry | M2 | T0.01 | 5 to 6 h | |
