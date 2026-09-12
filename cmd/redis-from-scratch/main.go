@@ -10,7 +10,11 @@ import (
 )
 
 func main() {
-	showVersion := flag.Bool("version", false, "print the server version and exit")
+	var (
+		showVersion = flag.Bool("version", false, "print the server version and exit")
+		bind        = flag.String("bind", "127.0.0.1", "address to bind")
+		port        = flag.Int("port", 6380, "port to listen on")
+	)
 	flag.Parse()
 
 	if *showVersion {
@@ -18,6 +22,16 @@ func main() {
 		return
 	}
 
-	fmt.Fprintln(os.Stderr, "redis-from-scratch "+server.Version+": server not implemented yet, see docs/tasks/README.md")
-	os.Exit(1)
+	srv := server.New()
+	if err := srv.Listen(*bind, *port); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer srv.Close()
+
+	fmt.Printf("redis-from-scratch %s listening on %s:%d\n", server.Version, *bind, *port)
+	if err := srv.Serve(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }
