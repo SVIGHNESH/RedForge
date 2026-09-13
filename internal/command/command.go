@@ -32,13 +32,27 @@ type Ctx struct {
 	// Now is the loop's view of the clock in milliseconds, read once per
 	// command so every handler in one command sees the same instant.
 	Now int64
+	// pending holds the canonical form of this command's write, set by
+	// Propagate. The dispatcher assigns the sequence number and fans it
+	// out after the handler returns a non-error reply.
+	pending [][]byte
 }
 
-// Propagate records the canonical form of a write for the log and for
-// replicas. A handler calls it exactly once, and only when it actually
-// changed something. T0.08 gives it the sequence number and T5.02 the log.
-func (ctx *Ctx) Propagate(args [][]byte) {
-	ctx.Srv.AppendPending(args)
+// Propagate records the canonical write form of this command. A handler that
+// changed state calls it exactly once; calling it twice panics so the mistake
+// is caught in tests. The dispatcher assigns the sequence number after the
+// handler returns, never the handler itself (MASTER-PLAN Sections 4.4, 4.5).
+func (ctx *Ctx) Propagate(args ...[]byte) {
+	if ctx.pending != nil {
+		panic("command: Propagate called twice in one command")
+	}
+	cp := make([][]byte, len(args))
+	for i, a := range args {
+		b := make([]byte, len(a))
+		copy(b, a)
+		cp[i] = b
+	}
+	ctx.pending = cp
 }
 
 // Handler is the frozen handler signature from MASTER-PLAN Section 4.4.

@@ -117,15 +117,20 @@ func TestErrorRepliesCannotInjectAFrame(t *testing.T) {
 	}
 }
 
-// Reads must not propagate. Nothing in this PR writes, so the pending log must
-// stay empty no matter what is dispatched.
+// Reads must not propagate. Nothing here writes, so the sequence counter must
+// stay at zero even with an appender registered.
 func TestReadsDoNotPropagate(t *testing.T) {
 	ctx := newCtx()
+	mem := &memoryAppender{}
+	ctx.Srv.Appenders = []server.Appender{mem}
 	for _, args := range [][]string{{"PING"}, {"ECHO", "x"}, {"QUIT"}, {"FOO"}} {
 		reply(t, ctx, args...)
 	}
-	if pending := ctx.Srv.TakePending(); len(pending) != 0 {
-		t.Fatalf("pending log = %v, want empty", pending)
+	if got := ctx.Srv.CurrentSeq(); got != 0 {
+		t.Fatalf("CurrentSeq() = %d, want 0 after reads", got)
+	}
+	if len(mem.recs) != 0 {
+		t.Fatalf("appender saw %v after reads, want nothing", mem.recs)
 	}
 }
 

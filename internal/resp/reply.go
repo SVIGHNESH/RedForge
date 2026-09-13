@@ -84,6 +84,14 @@ func SimpleString(s string) Reply { return simpleStringReply(s) }
 // Error builds -s\r\n. Use the wording from MASTER-PLAN Section 4.11 verbatim.
 func Error(s string) Reply { return errorReply(s) }
 
+// IsError reports whether r is an error reply. The dispatcher uses it to
+// decide whether a pending write consumes a sequence number: error replies
+// never advance the counter (MASTER-PLAN Section 4.4, T0.08).
+func IsError(r Reply) bool {
+	_, ok := r.(errorReply)
+	return ok
+}
+
 // Integer builds :n\r\n.
 func Integer(n int64) Reply { return integerReply(n) }
 
