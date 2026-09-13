@@ -10,13 +10,19 @@ Module path `github.com/SVIGHNESH/RedForge`, Go 1.22, **Linux only** (see [Linux
 
 ## Status
 
-Phase 0 of [the task board](docs/tasks/README.md) is merged: the RESP2 codec, the event loop and the dispatcher.
+T0.01 to T0.08 of [the task board](docs/tasks/README.md) are merged: the RESP2 codec, the event loop, the dispatcher, the keyspace types and the propagation hook.
 
 | Working today | Next |
 |---|---|
-| `PING`, `ECHO`, `QUIT` over RESP2 and inline | strings and the keyspace (T0.07, T2.x) |
-| Pipelining, partial reads, protocol errors | expiry (T3.x), the append-only log (T5.x) |
-| 100+ connections on one thread | snapshots and recovery (T6.x) |
+| `PING`, `ECHO`, `QUIT` over RESP2 and inline | strings: `SET`, `GET`, `DEL`, `EXISTS`, `INCR`, `KEYS` (T2.x) |
+| Pipelining, partial reads, protocol errors | expiry: `EXPIRE`, `TTL`, `PERSIST`, active sweep (T3.x) |
+| 100+ connections on one thread | lists, hashes, sets (T4.x) |
+| Map-backed `Store` with passive expiry and Redis glob matching | the append-only log (T5.x) |
+| `Clock` interface, `RealClock` and a `FakeClock` for tests | snapshots and recovery (T6.x) |
+| Dispatcher-assigned sequence numbers and the `Propagate` hook | contracts freeze (T0.11) |
+
+The store and the hook are internal plumbing: no data command is exposed to clients yet.
+`SetExpireAt`, `Persist`, `TTLms`, `SweepExpired` and `Snapshot` are stubs until T3.01, T3.02 and T6.02.
 
 ## Usage
 
@@ -161,6 +167,7 @@ internal/resp            RESP2 reader and writer
 internal/server          epoll loop, connections, buffers
 internal/command         command table, dispatcher, handlers
 internal/store           keyspace, value model, expiry, clock
+internal/storetest       FakeClock for deterministic expiry tests
 internal/aof             log records, fsync policy, replay
 internal/snapshot        snapshot format, writer, loader
 internal/recovery        startup sequence
