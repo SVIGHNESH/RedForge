@@ -48,9 +48,15 @@ type Server struct {
 	// Tick runs once per EpollWait timeout, on the loop thread.
 	Tick func(s *Server)
 
-	// pendingLog holds the canonical form of writes executed on this tick,
-	// in loop order. T0.08 attaches sequence numbers, T5.02 writes the log.
-	pendingLog [][][]byte
+	// Appenders receives every propagated write with its sequence number,
+	// in loop order. T5.02 registers the AOF writer here and T9.07 the
+	// replication fan-out. Tests register a memoryAppender.
+	Appenders []Appender
+
+	// seq is the sequence counter from MASTER-PLAN Section 4.5. It starts
+	// at 0, increments by exactly one per propagated write, and is assigned
+	// on the loop thread inside the dispatcher, never inside a handler.
+	seq uint64
 
 	stopping atomic.Bool
 
@@ -344,15 +350,27 @@ func (s *Server) TotalCommands() int64 { return s.totalCommands.Load() }
 // AddCommandsProcessed advances the command counter; the dispatcher owns it.
 func (s *Server) AddCommandsProcessed(n int64) { s.totalCommands.Add(n) }
 
-// AppendPending records a write in the order the loop executed it. T0.08
-// replaces this with the sequence counter and T5.02 with the real log.
-func (s *Server) AppendPending(args [][]byte) {
-	s.pendingLog = append(s.pendingLog, args)
+// Appender consumes one propagated write. It is implemented by the AOF
+// writer (T5.02) and the replication fan-out (T9.07). The interface lives
+// here rather than in internal/command because command already imports
+// server; defining it in command and storing it on Server would be an
+// import cycle. See T0.08.
+type Appender interface {
+	Append(seq uint64, args [][]byte) error
 }
 
-// TakePending returns and clears the pending writes.
-func (s *Server) TakePending() [][][]byte {
-	out := s.pendingLog
-	s.pendingLog = nil
-	return out
+// NextSeq increments the sequence counter by one and returns the new value.
+// Call it only on the loop thread from the dispatcher after a handler
+// returns a non-error reply with a pending write.
+func (s *Server) NextSeq() uint64 {
+	s.seq++
+	return s.seq
 }
+
+// CurrentSeq exposes the counter for INFO and the snapshot boundary.
+func (s *Server) CurrentSeq() uint64 { return s.seq }
+
+// SetSeq resumes the counter from recovery (max of snapshot max_seq and the
+// last valid log record) or from the primary's seq on a replica. It is also
+// used by tests to set a known starting point.
+func (s *Server) SetSeq(n uint64) { s.seq = n }

@@ -1,6 +1,7 @@
 package command
 
 import (
+	"log"
 	"strings"
 
 	"github.com/SVIGHNESH/RedForge/internal/resp"
@@ -14,6 +15,12 @@ const maxUnknownArgs = 3
 // Dispatch runs one command. Unknown names and arity mismatches are answered
 // with Redis's exact wording (MASTER-PLAN Section 4.11) so redis-cli and the
 // integration tests behave identically against this server and against Redis.
+//
+// When the handler records a write with Ctx.Propagate and returns a non-error
+// reply, Dispatch assigns the next sequence number (MASTER-PLAN Section 4.5)
+// and fans the canonical form out to every registered Appender. Error replies
+// never consume a sequence number. A read-flagged command that propagated is
+// a bug: the write still propagates, but a warning is logged.
 func Dispatch(ctx *Ctx, args [][]byte) resp.Reply {
 	if len(args) == 0 {
 		return resp.OK
@@ -26,7 +33,22 @@ func Dispatch(ctx *Ctx, args [][]byte) resp.Reply {
 	if !arityOK(cmd.Arity, len(args)) {
 		return resp.Error("ERR wrong number of arguments for '" + strings.ToLower(name) + "' command")
 	}
-	return cmd.Handler(ctx, args)
+	reply := cmd.Handler(ctx, args)
+	pending := ctx.pending
+	ctx.pending = nil
+	if pending == nil || resp.IsError(reply) {
+		return reply
+	}
+	if cmd.Flags&Write == 0 {
+		log.Printf("command: %s propagated a write but is not flagged Write", cmd.Name)
+	}
+	seq := ctx.Srv.NextSeq()
+	for _, a := range ctx.Srv.Appenders {
+		if err := a.Append(seq, pending); err != nil {
+			log.Printf("command: appender failed at seq %d: %v", seq, err)
+		}
+	}
+	return reply
 }
 
 func arityOK(arity, got int) bool {
