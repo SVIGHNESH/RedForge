@@ -6,7 +6,7 @@ Where this plan and the cut line disagree, the cut line wins.
 
 ## Ground Rules
 
-1. One repository, one `main` branch, feature branches merged via pull request.
+1. One repository, one `main` branch,   feature branches merged via pull request.
 2. Every pull request needs two approvals: the lead, and the module's named **secondary reviewer** from Proposal Section 12. The secondary's approval means "I can explain this without the author present", not "the diff looks fine".
 3. `redis-cli` compatibility is the definition of done for every command.
 4. Every command ships with tests in the same pull request, asserting invariants per Proposal Section 7, not just happy-path behaviour.
