@@ -1,0 +1,32 @@
+// Request lifecycle: one command from socket read to reply write.
+// Everything here runs on the single loop thread.
+// Render with: make diagrams
+digraph request_lifecycle {
+    graph [rankdir=TB, nodesep=0.4, ranksep=0.4, fontname="Arial", pad=0.3];
+    node  [shape=box, style="rounded,filled", fillcolor="#f2f2f2", color="#333333",
+           fontname="Arial", fontsize=13, margin="0.18,0.08"];
+    edge  [color="#333333", arrowsize=0.8, fontname="Arial", fontsize=11];
+
+    read     [label=<1. Socket read<BR/><FONT FACE="Courier" POINT-SIZE="11">EPOLLIN, read into rbuf (server.readReady)</FONT>>, fillcolor="#dbe9fb"];
+    parse    [label=<2. Parse one frame<BR/><FONT FACE="Courier" POINT-SIZE="11">resp.ParseCommand, incomplete waits for more bytes</FONT>>];
+    dispatch [label=<3. Dispatch<BR/><FONT FACE="Courier" POINT-SIZE="11">command.Dispatch: lookup, arity, Ctx.Now read once</FONT>>];
+    handler  [label=<4. Handler<BR/><FONT FACE="Courier" POINT-SIZE="11">e.g. SET, LPUSH, EXPIRE</FONT>>];
+    store    [label=<5. Store mutation<BR/><FONT FACE="Courier" POINT-SIZE="11">Store.Put / Store.Mutable (passive expiry, copy-on-write)</FONT>>, fillcolor="#e2f2e0"];
+    prop     [label=<6. Propagate<BR/><FONT FACE="Courier" POINT-SIZE="11">canonical form, e.g. EXPIRE becomes PEXPIREAT</FONT>>];
+    seq      [label=<7. Assign seq<BR/><FONT FACE="Courier" POINT-SIZE="11">Server.NextSeq, only after a non-error reply</FONT>>];
+    aof      [label=<8. AOF append<BR/><FONT FACE="Courier" POINT-SIZE="11">seq | len | crc32 | payload, fsync per policy</FONT>>, fillcolor="#fdf3cb"];
+    reply    [label=<9. Serialise reply<BR/><FONT FACE="Courier" POINT-SIZE="11">Reply.AppendTo(wbuf)</FONT>>];
+    write    [label=<10. Socket write<BR/><FONT FACE="Courier" POINT-SIZE="11">flush wbuf, EPOLLOUT on a short write</FONT>>, fillcolor="#dbe9fb"];
+
+    read -> parse;
+    parse -> dispatch [label=" complete frame"];
+    parse -> read [label=" incomplete", style=dashed, constraint=false];
+    dispatch -> handler;
+    handler -> store;
+    store -> prop [label=" write commands only"];
+    prop -> seq -> aof;
+    aof -> reply;
+    handler -> reply [label=" reads, errors, no-ops", style=dashed];
+    reply -> write [label=" rbuf holds no whole frame"];
+    reply -> parse [label=" next pipelined frame", style=dashed, constraint=false];
+}

@@ -1,0 +1,36 @@
+// System architecture, redrawn from Fig. 5.1 of the synopsis.
+// The second label line in each box names the package that implements it.
+// Render with: make diagrams
+digraph architecture {
+    graph [rankdir=TB, nodesep=0.35, ranksep=0.45, fontname="Arial", pad=0.3];
+    node  [shape=box, style="rounded,filled", fillcolor="#f2f2f2", color="#333333",
+           fontname="Arial", fontsize=13, margin="0.18,0.08"];
+    edge  [color="#333333", arrowsize=0.8];
+
+    clients  [label=<Redis clients<BR/>(redis-cli, redis-benchmark)>, fillcolor="#dbe9fb"];
+    sockets  [label=<Non-blocking TCP sockets<BR/><FONT FACE="Courier" POINT-SIZE="11">internal/server (syscall, Accept4)</FONT>>];
+    loop     [label=<Single-threaded event loop<BR/><FONT FACE="Courier" POINT-SIZE="11">internal/server (epoll, 100 ms tick)</FONT>>];
+    resp     [label=<RESP2 parser / serializer<BR/><FONT FACE="Courier" POINT-SIZE="11">internal/resp</FONT>>];
+    dispatch [label=<Command dispatcher<BR/><FONT FACE="Courier" POINT-SIZE="11">internal/command</FONT>>];
+    store    [label=<In-memory store<BR/>strings, lists, hashes, sets, sorted sets<BR/><FONT FACE="Courier" POINT-SIZE="11">internal/store</FONT>>, fillcolor="#e2f2e0"];
+
+    expiry   [label=<Expiry<BR/>(passive + active sweep)<BR/><FONT FACE="Courier" POINT-SIZE="11">internal/store/expiry.go</FONT>>];
+    aof      [label=<AOF writer<BR/>(seq-numbered records)<BR/><FONT FACE="Courier" POINT-SIZE="11">internal/aof</FONT>>];
+    snap     [label=<Snapshot (BGSAVE)<BR/>temp file + rename<BR/><FONT FACE="Courier" POINT-SIZE="11">internal/snapshot</FONT>>];
+    repl     [label=<Replication (stretch S1)<BR/>(primary -&gt; replicas)<BR/><FONT FACE="Courier" POINT-SIZE="11">internal/replication</FONT>>, style="rounded,filled,dashed"];
+
+    disk     [label=<Disk<BR/>appendonly.aof<BR/>dump.snap>, shape=cylinder, style=filled, fillcolor="#fdf3cb"];
+    recovery [label=<Startup recovery<BR/><FONT FACE="Courier" POINT-SIZE="11">internal/recovery</FONT>>];
+
+    clients -> sockets -> loop -> resp -> dispatch -> store;
+    store -> expiry;
+    store -> aof;
+    store -> snap;
+    store -> repl;
+    aof -> disk;
+    snap -> disk;
+    disk -> recovery [style=dashed, label=" on start", fontname="Arial", fontsize=11];
+    recovery -> store [style=dashed, constraint=false];
+
+    { rank=same; expiry; aof; snap; repl; }
+}
