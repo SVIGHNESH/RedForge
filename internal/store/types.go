@@ -92,19 +92,6 @@ func (v *StringVal) Clone() Value {
 	return v
 }
 
-// ListVal is the deque placeholder T4.01 fleshes out in list.go with a
-// ring-buffered O(1) push and pop at both ends plus Range with Redis
-// negative-index rules.
-type ListVal struct{}
-
-// Clone returns an independent empty list. T4.01 deep-copies the deque.
-func (v *ListVal) Clone() Value {
-	if v == nil {
-		return nil
-	}
-	return &ListVal{}
-}
-
 // HashVal wraps a hash's field map.
 type HashVal struct {
 	M map[string][]byte
