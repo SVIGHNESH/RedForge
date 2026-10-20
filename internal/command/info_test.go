@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/SVIGHNESH/RedForge/internal/server"
+	"github.com/SVIGHNESH/RedForge/internal/testutil"
 )
 
 // infoFields is every field MASTER-PLAN Section 4.10 and T3.05 require, by
@@ -26,48 +27,17 @@ var infoFields = map[string][]string{
 
 var infoOrder = []string{"Server", "Clients", "Memory", "Stats", "Persistence", "Replication", "Keyspace"}
 
-// parsedInfo is INFO output as sections of ordered key:value pairs.
-type parsedInfo struct {
-	sections []string
-	keys     map[string][]string
-	values   map[string]string
-}
+// parsedInfo is INFO output as ordered sections of key:value fields, parsed
+// by the shared strict parser in internal/testutil.
+type parsedInfo = testutil.InfoReply
 
-// parseInfo parses the bulk payload of INFO strictly: CRLF line endings,
-// "# Name" headers, key:value lines, and single blank lines only between
-// sections. It is the parser T1.03's testutil.Info will mirror.
 func parseInfo(t *testing.T, payload string) parsedInfo {
 	t.Helper()
-	p := parsedInfo{keys: map[string][]string{}, values: map[string]string{}}
-	if !strings.HasSuffix(payload, "\r\n") {
-		t.Fatalf("INFO payload does not end in CRLF: %q", payload)
+	info, err := testutil.ParseInfo(payload)
+	if err != nil {
+		t.Fatal(err)
 	}
-	lines := strings.Split(strings.TrimSuffix(payload, "\r\n"), "\r\n")
-	cur := ""
-	for i, line := range lines {
-		switch {
-		case strings.Contains(line, "\n") || strings.Contains(line, "\r"):
-			t.Fatalf("line %d has a bare CR or LF: %q", i, line)
-		case strings.HasPrefix(line, "# "):
-			if i > 0 && lines[i-1] != "" {
-				t.Fatalf("section %q is not preceded by a blank line", line)
-			}
-			cur = line[2:]
-			p.sections = append(p.sections, cur)
-		case line == "":
-			if i+1 >= len(lines) || !strings.HasPrefix(lines[i+1], "# ") {
-				t.Fatalf("blank line %d is not followed by a section header", i)
-			}
-		default:
-			k, v, ok := strings.Cut(line, ":")
-			if !ok || cur == "" {
-				t.Fatalf("line %d %q is not key:value inside a section", i, line)
-			}
-			p.keys[cur] = append(p.keys[cur], k)
-			p.values[k] = v
-		}
-	}
-	return p
+	return info
 }
 
 func infoOf(t *testing.T, ctx *Ctx, args ...string) parsedInfo {
@@ -96,25 +66,25 @@ func bulkPayload(raw []byte) (string, bool) {
 
 func TestInfoHasEveryFrozenFieldInOrder(t *testing.T) {
 	info := infoOf(t, newCtx())
-	if !reflect.DeepEqual(info.sections, infoOrder) {
-		t.Fatalf("sections = %v, want %v", info.sections, infoOrder)
+	if !reflect.DeepEqual(info.Sections, infoOrder) {
+		t.Fatalf("sections = %v, want %v", info.Sections, infoOrder)
 	}
 	for _, sec := range infoOrder {
-		if got := info.keys[sec]; !reflect.DeepEqual(got, infoFields[sec]) {
+		if got := info.Keys[sec]; !reflect.DeepEqual(got, infoFields[sec]) {
 			t.Errorf("%s fields = %v, want %v", sec, got, infoFields[sec])
 		}
 	}
-	if info.values["redis_version"] != server.Version {
-		t.Errorf("redis_version = %q, want %q", info.values["redis_version"], server.Version)
+	if info.Values["redis_version"] != server.Version {
+		t.Errorf("redis_version = %q, want %q", info.Values["redis_version"], server.Version)
 	}
-	if info.values["process_id"] != strconv.Itoa(os.Getpid()) {
-		t.Errorf("process_id = %q", info.values["process_id"])
+	if info.Values["process_id"] != strconv.Itoa(os.Getpid()) {
+		t.Errorf("process_id = %q", info.Values["process_id"])
 	}
-	if info.values["role"] != "master" || info.values["last_bgsave_status"] != "ok" {
-		t.Errorf("idle defaults wrong: role=%q last_bgsave_status=%q", info.values["role"], info.values["last_bgsave_status"])
+	if info.Values["role"] != "master" || info.Values["last_bgsave_status"] != "ok" {
+		t.Errorf("idle defaults wrong: role=%q last_bgsave_status=%q", info.Values["role"], info.Values["last_bgsave_status"])
 	}
-	if info.values["db0"] != "keys=0,expires=0" {
-		t.Errorf("db0 on an empty store = %q, want keys=0,expires=0", info.values["db0"])
+	if info.Values["db0"] != "keys=0,expires=0" {
+		t.Errorf("db0 on an empty store = %q, want keys=0,expires=0", info.Values["db0"])
 	}
 }
 
@@ -132,7 +102,7 @@ func TestInfoSectionSelection(t *testing.T) {
 		{[]string{"everything"}, infoOrder},
 	}
 	for _, tc := range cases {
-		if got := infoOf(t, ctx, tc.args...).sections; !reflect.DeepEqual(got, tc.want) {
+		if got := infoOf(t, ctx, tc.args...).Sections; !reflect.DeepEqual(got, tc.want) {
 			t.Errorf("INFO %v sections = %v, want %v", tc.args, got, tc.want)
 		}
 	}
@@ -162,8 +132,8 @@ func TestInfoCountersTrackTheKeyspace(t *testing.T) {
 		"keys_last_reply_bytes": strconv.Itoa(len("*2\r\n$1\r\na\r\n$1\r\nb\r\n")),
 	}
 	for k, v := range want {
-		if info.values[k] != v {
-			t.Errorf("%s = %q, want %q", k, info.values[k], v)
+		if info.Values[k] != v {
+			t.Errorf("%s = %q, want %q", k, info.Values[k], v)
 		}
 	}
 
@@ -173,8 +143,8 @@ func TestInfoCountersTrackTheKeyspace(t *testing.T) {
 	for k, v := range map[string]string{
 		"db0": "keys=1,expires=0", "expired_keys": "1", "keyspace_misses": "2", "uptime_in_seconds": "2",
 	} {
-		if info.values[k] != v {
-			t.Errorf("after expiry %s = %q, want %q", k, info.values[k], v)
+		if info.Values[k] != v {
+			t.Errorf("after expiry %s = %q, want %q", k, info.Values[k], v)
 		}
 	}
 }
@@ -190,10 +160,10 @@ func TestInfoProvidersOverrideAndExtend(t *testing.T) {
 		}
 	})
 	info := infoOf(t, ctx, "persistence")
-	if info.values["aof_fsync_policy"] != "always" {
-		t.Errorf("aof_fsync_policy = %q, want the provider's value", info.values["aof_fsync_policy"])
+	if info.Values["aof_fsync_policy"] != "always" {
+		t.Errorf("aof_fsync_policy = %q, want the provider's value", info.Values["aof_fsync_policy"])
 	}
-	keys := info.keys["Persistence"]
+	keys := info.Keys["Persistence"]
 	if keys[0] != "aof_fsync_policy" || keys[len(keys)-1] != "aof_rewrite_scheduled" {
 		t.Errorf("override moved a field or did not append: %v", keys)
 	}
@@ -223,11 +193,11 @@ func TestInfoOverTheLoop(t *testing.T) {
 
 	info := parseInfo(t, c.do("INFO"))
 	_, port, _ := strings.Cut(addr, ":")
-	if info.values["tcp_port"] != port {
-		t.Errorf("tcp_port = %q, want %q", info.values["tcp_port"], port)
+	if info.Values["tcp_port"] != port {
+		t.Errorf("tcp_port = %q, want %q", info.Values["tcp_port"], port)
 	}
-	if info.values["connected_clients"] != "2" {
-		t.Errorf("connected_clients = %q, want 2", info.values["connected_clients"])
+	if info.Values["connected_clients"] != "2" {
+		t.Errorf("connected_clients = %q, want 2", info.Values["connected_clients"])
 	}
 
 	const n = 2000
@@ -239,20 +209,20 @@ func TestInfoOverTheLoop(t *testing.T) {
 	for i := 0; i < 2*n; i++ {
 		c.read()
 	}
-	if got := parseInfo(t, c.do("INFO keyspace")).values["db0"]; got != fmt.Sprintf("keys=%d,expires=%d", n, n) {
+	if got := parseInfo(t, c.do("INFO keyspace")).Values["db0"]; got != fmt.Sprintf("keys=%d,expires=%d", n, n) {
 		t.Fatalf("db0 after load = %q", got)
 	}
 	deadline := time.Now().Add(5 * time.Second)
 	for {
 		info := parseInfo(t, c.do("INFO"))
-		if info.values["db0"] == "keys=0,expires=0" {
-			if info.values["total_sweep_deleted"] != strconv.Itoa(n) {
-				t.Fatalf("total_sweep_deleted = %q, want %d", info.values["total_sweep_deleted"], n)
+		if info.Values["db0"] == "keys=0,expires=0" {
+			if info.Values["total_sweep_deleted"] != strconv.Itoa(n) {
+				t.Fatalf("total_sweep_deleted = %q, want %d", info.Values["total_sweep_deleted"], n)
 			}
 			return
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("db0 still %q after 5 s", info.values["db0"])
+			t.Fatalf("db0 still %q after 5 s", info.Values["db0"])
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
