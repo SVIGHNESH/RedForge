@@ -18,9 +18,9 @@ Owners are suggestions from the implementation plan. Anyone may take any task, b
 | [T0.06](t0-06-dispatcher-ping-echo.md) | Command table, dispatcher, PING, ECHO, QUIT | M1 | T0.03, T0.05 | 2 to 3 h | Merged (PR #77) |
 | [T0.07](t0-07-store-types.md) | Store types, Entry, Value, Clock, map store | M3 | T0.01 | 3 h | Merged (PR #80) |
 | [T0.08](t0-08-seq-and-propagate.md) | Sequence counter and Propagate hook | M7, M8 | T0.06, T0.07 | 2 h | Merged (PR #81) |
-| [T0.09](t0-09-tooling-smoke-test.md) | Client tooling smoke test | M1 | T0.06 | 1 to 2 h | |
-| [T0.10](t0-10-decisions-and-diagram-drafts.md) | DECISIONS.md and diagram drafts | M11 | none | 3 h | |
-| [T0.11](t0-11-contracts-freeze.md) | Contracts freeze | all | T0.02 to T0.08 | 1 h + meeting | |
+| [T0.09](t0-09-tooling-smoke-test.md) | Client tooling smoke test | M1 | T0.06 | 1 to 2 h | Merged (PR #119) |
+| [T0.10](t0-10-decisions-and-diagram-drafts.md) | DECISIONS.md and diagram drafts | M11 | none | 3 h | Merged (PR #92) |
+| [T0.11](t0-11-contracts-freeze.md) | Contracts freeze | all | T0.02 to T0.08 | 1 h + meeting | Merged (PR #84) |
 
 ## Phase 1: Parallel tracks (Weeks 3 to 8)
 
@@ -28,46 +28,46 @@ Owners are suggestions from the implementation plan. Anyone may take any task, b
 
 | Task | Title | Item | Depends on | Effort | Status |
 |---|---|---|---|---|---|
-| [T1.01](t1-01-resp-edge-cases.md) | RESP2 edge cases and protocol errors | M1 | T0.05, T0.06 | 3 h | |
-| [T1.02](t1-02-testutil-server-process.md) | Test harness: ServerProcess | M9 | T0.01 | 3 h | |
-| [T1.03](t1-03-testutil-resp-client.md) | Test harness: RESP client | M9 | T0.02, T0.03 | 2 h | |
-| [T1.04](t1-04-hundred-connections-test.md) | 100-connection goroutine-count test | M2 | T1.02, T1.03 | 2 h | |
-| [T1.05](t1-05-make-test-and-ci.md) | One-command test runner and CI | M9 | T0.01, T1.02 | 1 to 2 h | |
-| [T7.01](t7-01-crash-tests-cr1-cr2.md) | Crash tests CR1 and CR2 | M9 | T1.02, T1.03 | 2 to 3 h | |
-| [T7.02](t7-02-crash-test-cr3-kill-during-bgsave.md) | Crash test CR3: kill during BGSAVE | M9 | T7.01, T6.03 | 2 h | |
-| [T7.03](t7-03-crash-test-cr4-torn-record.md) | Crash test CR4: torn record | M9 | T7.01 | 1 to 2 h | |
-| [T7.04](t7-04-expiry-across-restart-tests.md) | Expiry tests EX1 to EX3 | M9 | T7.01, T3.01 | 1 to 2 h | |
-| [T7.05](t7-05-concurrency-tests-cc1-cc2.md) | Concurrency tests CC1 and CC2 | M9 | T1.03 | 1 to 2 h | |
-| [T11.01](t11-01-docker.md) | Dockerfile and Docker Compose | M11 | T0.01 | 2 h | |
+| [T1.01](t1-01-resp-edge-cases.md) | RESP2 edge cases and protocol errors | M1 | T0.05, T0.06 | 3 h | Merged (PR #89) |
+| [T1.02](t1-02-testutil-server-process.md) | Test harness: ServerProcess | M9 | T0.01 | 3 h | Merged (PR #105) |
+| [T1.03](t1-03-testutil-resp-client.md) | Test harness: RESP client | M9 | T0.02, T0.03 | 2 h | Merged (PR #110) |
+| [T1.04](t1-04-hundred-connections-test.md) | 100-connection goroutine-count test | M2 | T1.02, T1.03 | 2 h | Merged (PR #111) |
+| [T1.05](t1-05-make-test-and-ci.md) | One-command test runner and CI | M9 | T0.01, T1.02 | 1 to 2 h | Merged (PR #112) |
+| [T7.01](t7-01-crash-tests-cr1-cr2.md) | Crash tests CR1 and CR2 | M9 | T1.02, T1.03 | 2 to 3 h | Merged (PR #121) |
+| [T7.02](t7-02-crash-test-cr3-kill-during-bgsave.md) | Crash test CR3: kill during BGSAVE | M9 | T7.01, T6.03 | 2 h | Merged (PR #122) |
+| [T7.03](t7-03-crash-test-cr4-torn-record.md) | Crash test CR4: torn record | M9 | T7.01 | 1 to 2 h | Merged (PR #123) |
+| [T7.04](t7-04-expiry-across-restart-tests.md) | Expiry tests EX1 to EX3 | M9 | T7.01, T3.01 | 1 to 2 h | Merged (PR #124) |
+| [T7.05](t7-05-concurrency-tests-cc1-cc2.md) | Concurrency tests CC1 and CC2 | M9 | T1.03 | 1 to 2 h | Merged (PR #117) |
+| [T11.01](t11-01-docker.md) | Dockerfile and Docker Compose | M11 | T0.01 | 2 h | Merged (PR #109) |
 
 ### Vighnesh: core engine and expiry
 
 | Task | Title | Item | Depends on | Effort | Status |
 |---|---|---|---|---|---|
-| [T2.01](t2-01-set-get-del-exists.md) | SET, GET, DEL, EXISTS | M3 | T0.06 to T0.08 | 2 to 3 h | |
-| [T2.02](t2-02-incr.md) | INCR | M3 | T2.01 | 1 to 2 h | |
-| [T2.03](t2-03-keys.md) | KEYS | M3 | T0.07 | 1 to 2 h | |
-| [T2.04](t2-04-strings-cli-session-test.md) | redis-cli session test for strings | M3 | T2.01 to T2.03 | 1 h | |
-| [T3.01](t3-01-expire-ttl-persist.md) | Expiry storage, EXPIRE, TTL, PERSIST, passive | M4 | T0.07, T0.08, T2.01 | 3 to 4 h | |
-| [T3.02](t3-02-active-sweep.md) | Active expiry sweep | M4 | T3.01, T0.04 | 2 to 3 h | |
-| [T3.03](t3-03-expiry-unit-tests.md) | Expiry invariant tests | M9 | T3.01, T3.02 | 2 h | |
-| [T3.04](t3-04-incr-lost-update-test.md) | Shared-key INCR test (CC3) | M9 | T2.02, T1.03 | 1 h | |
-| [T3.05](t3-05-info.md) | INFO | M11 | T0.06, T0.08 | 2 h | |
-| [T3.06](t3-06-command-and-counters.md) | COMMAND and stats counters | M11 | T0.06 | 1 to 2 h | |
+| [T2.01](t2-01-set-get-del-exists.md) | SET, GET, DEL, EXISTS | M3 | T0.06 to T0.08 | 2 to 3 h | Merged (PR #86) |
+| [T2.02](t2-02-incr.md) | INCR | M3 | T2.01 | 1 to 2 h | Merged (PR #91) |
+| [T2.03](t2-03-keys.md) | KEYS | M3 | T0.07 | 1 to 2 h | Merged (PR #88) |
+| [T2.04](t2-04-strings-cli-session-test.md) | redis-cli session test for strings | M3 | T2.01 to T2.03 | 1 h | Merged (PR #114) |
+| [T3.01](t3-01-expire-ttl-persist.md) | Expiry storage, EXPIRE, TTL, PERSIST, passive | M4 | T0.07, T0.08, T2.01 | 3 to 4 h | Merged (PR #93) |
+| [T3.02](t3-02-active-sweep.md) | Active expiry sweep | M4 | T3.01, T0.04 | 2 to 3 h | Merged (PR #94) |
+| [T3.03](t3-03-expiry-unit-tests.md) | Expiry invariant tests | M9 | T3.01, T3.02 | 2 h | Merged (PR #95) |
+| [T3.04](t3-04-incr-lost-update-test.md) | Shared-key INCR test (CC3) | M9 | T2.02, T1.03 | 1 h | Merged (PR #115) |
+| [T3.05](t3-05-info.md) | INFO | M11 | T0.06, T0.08 | 2 h | Merged (PR #96) |
+| [T3.06](t3-06-command-and-counters.md) | COMMAND and stats counters | M11 | T0.06 | 1 to 2 h | Merged (PR #97) |
 
 ### Ritk: data structures, then benchmark harness
 
 | Task | Title | Item | Depends on | Effort | Status |
 |---|---|---|---|---|---|
-| [T4.01](t4-01-list-deque.md) | ListVal deque | M5 | T0.07 | 2 to 3 h | |
-| [T4.02](t4-02-list-commands.md) | List commands | M5 | T4.01, T0.06, T0.08 | 3 h | |
-| [T4.03](t4-03-list-property-test.md) | List mixed-end property test | M9 | T4.02 | 1 to 2 h | |
-| [T4.04](t4-04-hash-commands.md) | Hash commands | M5 | T0.07, T0.06, T0.08 | 2 to 3 h | |
-| [T4.05](t4-05-set-commands.md) | Set commands | M6 | T0.07, T0.06, T0.08 | 2 to 3 h | |
-| [T4.06](t4-06-hash-set-invariant-tests.md) | Hash and set invariant tests | M9 | T4.04, T4.05 | 1 to 2 h | |
+| [T4.01](t4-01-list-deque.md) | ListVal deque | M5 | T0.07 | 2 to 3 h | Merged (PR #85) |
+| [T4.02](t4-02-list-commands.md) | List commands | M5 | T4.01, T0.06, T0.08 | 3 h | Merged (PR #100) |
+| [T4.03](t4-03-list-property-test.md) | List mixed-end property test | M9 | T4.02 | 1 to 2 h | Merged (PR #101) |
+| [T4.04](t4-04-hash-commands.md) | Hash commands | M5 | T0.07, T0.06, T0.08 | 2 to 3 h | Merged (PR #87) |
+| [T4.05](t4-05-set-commands.md) | Set commands | M6 | T0.07, T0.06, T0.08 | 2 to 3 h | Merged (PR #90) |
+| [T4.06](t4-06-hash-set-invariant-tests.md) | Hash and set invariant tests | M9 | T4.04, T4.05 | 1 to 2 h | Merged (PR #102) |
 | [T8.01](t8-01-bench-runner.md) | Benchmark runner and scenario config | M10 | T1.05 | 4 h | |
-| [T8.02](t8-02-bench-sampler.md) | CPU and memory sampler | M10 | none | 1 to 2 h | |
-| [T8.03](t8-03-bench-spec-capture.md) | Machine specification capture | M10 | none | 30 min | |
+| [T8.02](t8-02-bench-sampler.md) | CPU and memory sampler | M10 | none | 1 to 2 h | Merged (PR #106) |
+| [T8.03](t8-03-bench-spec-capture.md) | Machine specification capture | M10 | none | 30 min | Merged (PR #107) |
 | [T8.04](t8-04-bench-report-tool.md) | Report tool: medians and tables | M10 | T8.01, T8.02 | 3 h | |
 | [T8.05](t8-05-keys-stall-measurement.md) | KEYS stall measurement | M10 | T2.03, T8.01 | 2 h | |
 | [T8.06](t8-06-bench-charts.md) | Charts | M10 | T8.04 | 2 h | |
@@ -76,14 +76,14 @@ Owners are suggestions from the implementation plan. Anyone may take any task, b
 
 | Task | Title | Item | Depends on | Effort | Status |
 |---|---|---|---|---|---|
-| [T5.01](t5-01-aof-record-codec.md) | Log record codec | M7 | T0.01, T0.03 | 2 to 3 h | |
-| [T5.02](t5-02-aof-writer-fsync.md) | Log writer with fsync policies | M7 | T5.01, T0.08 | 3 h | |
-| [T5.03](t5-03-aof-replay-truncation.md) | Replay and torn-record truncation | M7 | T5.01, T5.02, T0.06 | 3 h | |
-| [T5.04](t5-04-startup-log-recovery.md) | Startup: replay and resume sequence | M7 | T5.03 | 1 to 2 h | |
-| [T6.01](t6-01-snapshot-codec.md) | Snapshot codec | M8 | T0.07, T4.02, T4.04, T4.05 | 3 h | |
-| [T6.02](t6-02-store-snapshot-cow.md) | Store.Snapshot clone and copy-on-write | M8 | T0.07, T4.02 | 2 to 3 h | |
-| [T6.03](t6-03-bgsave.md) | BGSAVE, writer goroutine, atomic rename | M8 | T6.01, T6.02, T0.04 | 3 to 4 h | |
-| [T6.04](t6-04-startup-recovery-sequence.md) | Full startup recovery | M8 | T5.04, T6.01, T6.03 | 2 h | |
+| [T5.01](t5-01-aof-record-codec.md) | Log record codec | M7 | T0.01, T0.03 | 2 to 3 h | Merged (PR #104) |
+| [T5.02](t5-02-aof-writer-fsync.md) | Log writer with fsync policies | M7 | T5.01, T0.08 | 3 h | Merged (PR #108) |
+| [T5.03](t5-03-aof-replay-truncation.md) | Replay and torn-record truncation | M7 | T5.01, T5.02, T0.06 | 3 h | Merged (PR #113) |
+| [T5.04](t5-04-startup-log-recovery.md) | Startup: replay and resume sequence | M7 | T5.03 | 1 to 2 h | Merged (PR #116) |
+| [T6.01](t6-01-snapshot-codec.md) | Snapshot codec | M8 | T0.07, T4.02, T4.04, T4.05 | 3 h | Merged (PR #118) |
+| [T6.02](t6-02-store-snapshot-cow.md) | Store.Snapshot clone and copy-on-write | M8 | T0.07, T4.02 | 2 to 3 h | Merged (PR #120) |
+| [T6.03](t6-03-bgsave.md) | BGSAVE, writer goroutine, atomic rename | M8 | T6.01, T6.02, T0.04 | 3 to 4 h | Merged (PR #125) |
+| [T6.04](t6-04-startup-recovery-sequence.md) | Full startup recovery | M8 | T5.04, T6.01, T6.03 | 2 h | Merged (PR #126) |
 
 ## Stretch (Week 8 and Weeks 9 to 11, cut-line rules apply)
 
@@ -112,7 +112,7 @@ Owners are suggestions from the implementation plan. Anyone may take any task, b
 | [T11.02](t11-02-readme.md) | README | M11 | all merged | 2 h | |
 | [T11.03](t11-03-final-diagrams.md) | Final diagrams | M11 | T0.10, T9.09 | 2 to 3 h | |
 | [T11.04](t11-04-final-report.md) | Final report assembly | M11 | T10.06, T11.03 | 6 h | |
-| [T11.05](t11-05-viva-ledger-and-rehearsals.md) | Viva ledger and rehearsals | M11 | none | ongoing | |
+| [T11.05](t11-05-viva-ledger-and-rehearsals.md) | Viva ledger and rehearsals | M11 | none | ongoing | Ledger started (PR #99) |
 
 ## Critical path
 

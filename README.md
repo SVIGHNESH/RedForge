@@ -4,25 +4,25 @@ A Redis-compatible server written from scratch in Go, using only the standard li
 
 `redis-cli` and `redis-benchmark` talk to it without knowing the difference.
 There is no `net` package, no goroutine per connection and no dependency: one thread, one `epoll` loop, one keyspace.
+Writes go to a checksummed append-only log, `BGSAVE` takes snapshots without `fork`, and the server survives `kill -9` with its data and its TTLs intact.
 
 B.Tech final-year project.
 Module path `github.com/SVIGHNESH/RedForge`, Go 1.22, **Linux only** (see [Linux only](#linux-only)).
 
 ## Status
 
-T0.01 to T0.08 of [the task board](docs/tasks/README.md) are merged: the RESP2 codec, the event loop, the dispatcher, the keyspace types and the propagation hook.
+Every correctness item of the proposal, M1 to M9, is merged: the protocol, the event loop, strings, expiry, lists, hashes, sets, the append-only log, snapshots with crash recovery, and the test suite that proves them.
 
-| Working today | Next |
+| Done | Left |
 |---|---|
-| `PING`, `ECHO`, `QUIT` over RESP2 and inline | strings: `SET`, `GET`, `DEL`, `EXISTS`, `INCR`, `KEYS` (T2.x) |
-| Pipelining, partial reads, protocol errors | expiry: `EXPIRE`, `TTL`, `PERSIST`, active sweep (T3.x) |
-| 100+ connections on one thread | lists, hashes, sets (T4.x) |
-| Map-backed `Store` with passive expiry and Redis glob matching | the append-only log (T5.x) |
-| `Clock` interface, `RealClock` and a `FakeClock` for tests | snapshots and recovery (T6.x) |
-| Dispatcher-assigned sequence numbers and the `Propagate` hook | contracts freeze (T0.11) |
+| RESP2 codec, pipelining, inline commands, Redis-exact protocol errors | Benchmark runner and evaluation against official Redis (T8.01, T8.04 to T8.06, T10.x) |
+| Single-threaded `epoll` loop, 100+ connections on one thread | Stretch: log compaction, transactions, sorted sets, Pub/Sub, replication (T9.x) |
+| Strings, keyspace, expiry (passive and active), lists, hashes, sets | README, final diagrams and report (T11.02 to T11.04) |
+| Append-only log with three fsync policies, torn-record truncation | |
+| `BGSAVE` by clone plus copy-on-write, atomic rename, recovery | |
+| Crash, expiry, concurrency and property tests, CI with zero skips | |
 
-The store and the hook are internal plumbing: no data command is exposed to clients yet.
-`SetExpireAt`, `Persist`, `TTLms`, `SweepExpired` and `Snapshot` are stubs until T3.01, T3.02 and T6.02.
+The live picture, issue by issue, is the [requirements traceability matrix](docs/RTM.md): what each issue serves, what blocks it, and whose work it waits on.
 
 ## Usage
 
@@ -30,9 +30,10 @@ The store and the hook are internal plumbing: no data command is exposed to clie
 
 ```sh
 make build                                   # -> bin/redis-from-scratch
-./bin/redis-from-scratch                     # 127.0.0.1:6380
+./bin/redis-from-scratch                     # 127.0.0.1:6380, data in ./data
 ./bin/redis-from-scratch --port 6390         # somewhere else
-./bin/redis-from-scratch --bind 0.0.0.0      # listen on every interface
+./bin/redis-from-scratch --dir /var/lib/rfs  # keep the log and snapshot elsewhere
+./bin/redis-from-scratch --appendfsync always
 ./bin/redis-from-scratch --version           # 0.1.0-rfs
 ```
 
@@ -40,10 +41,13 @@ make build                                   # -> bin/redis-from-scratch
 |---|---|---|
 | `--port` | `6380` | Port to listen on. Not 6379, so it can run beside a real Redis. |
 | `--bind` | `127.0.0.1` | IPv4 address to bind. |
+| `--dir` | `./data` | Persistence directory, holding `appendonly.aof` and `dump.snap`. |
+| `--appendfsync` | `everysec` | When the log is fsynced: `always` (before every reply), `everysec`, or `no` (the kernel decides). |
+| `--debug-bgsave-delay-ms` | `0` | Test hook that slows the snapshot rename so the kill-during-`BGSAVE` test is deterministic. Never used in the evaluation. |
 | `--version` | | Print the version and exit. |
 
 Stop the server with Ctrl-C.
-The persistence and replication flags (`--dir`, `--appendfsync`, `--replicaof`) land with their tasks.
+`--replicaof` arrives with the replication stretch item (T9.06).
 
 ### Linux only
 
@@ -51,39 +55,70 @@ The server is a raw `epoll` loop, so it builds and runs on Linux and nowhere els
 `GOOS=windows go build ./...` fails on `undefined: syscall.EpollCreate1`, and macOS fails the same way, because `epoll` is a Linux kernel interface with no equivalent exposed under those names.
 This is a constraint of the project, not a gap: the synopsis rules out a portability layer, so there is deliberately no `net`-package fallback.
 
-On Windows, use WSL2, a Linux VM, or Docker.
+On Windows, use WSL2, a Linux VM, or Docker (see [Docker](#docker)).
 `internal/resp` and `internal/command` are pure Go and build anywhere; only the server does not.
 
 ### Talk to it with redis-cli
 
 ```sh
-$ redis-cli -p 6380 PING
-PONG
-$ redis-cli -p 6380 PING hello
-hello
-$ redis-cli -p 6380 ECHO hi
-hi
+$ redis-cli -p 6380 SET name Vighnesh
+OK
+$ redis-cli -p 6380 GET name
+Vighnesh
+$ redis-cli -p 6380 EXPIRE name 100
+(integer) 1
+$ redis-cli -p 6380 TTL name
+(integer) 100
+$ redis-cli -p 6380 LPUSH users Vighnesh Rajat
+(integer) 2
+$ redis-cli -p 6380 LRANGE users 0 -1
+1) "Rajat"
+2) "Vighnesh"
+$ redis-cli -p 6380 HSET user:1 name Ritik role dev
+(integer) 2
+$ redis-cli -p 6380 SADD a x y z
+(integer) 3
+$ redis-cli -p 6380 SADD b y z w
+(integer) 3
+$ redis-cli -p 6380 SINTER a b
+1) "y"
+2) "z"
+$ redis-cli -p 6380 GET users
+(error) WRONGTYPE Operation against a key holding the wrong kind of value
 ```
 
-Interactive mode works, and `quit` exits cleanly:
-
-```sh
-$ redis-cli -p 6380
-127.0.0.1:6380> PING
-PONG
-127.0.0.1:6380> quit
-```
-
+Interactive mode works, and `quit` exits cleanly.
 Anything outside the command set is refused in Redis's own wording:
 
 ```sh
-$ redis-cli -p 6380 FOO a b
-ERR unknown command 'FOO', with args beginning with: 'a' 'b'
-$ redis-cli -p 6380 HELLO
-ERR unknown command 'HELLO', with args beginning with:
+$ redis-cli -p 6380 HELLO 3
+(error) ERR unknown command 'HELLO', with args beginning with: '3'
 $ redis-cli -p 6380 ECHO
-ERR wrong number of arguments for 'echo' command
+(error) ERR wrong number of arguments for 'echo' command
 ```
+
+### Persistence and crash recovery
+
+Every write is appended to `appendonly.aof` as a record carrying a sequence number, a length and a CRC32.
+`BGSAVE` writes `dump.snap` in the background and records the highest sequence number it contains, so on restart the snapshot is loaded and only the log records after it are replayed.
+
+```sh
+$ redis-cli -p 6380 SET session abc
+$ redis-cli -p 6380 EXPIRE session 60
+$ redis-cli -p 6380 BGSAVE
+Background saving started
+$ redis-cli -p 6380 SET k v            # after the snapshot, so only in the log
+$ kill -9 <server pid>; sleep 2; ./bin/redis-from-scratch
+recovery: loaded 1 keys from dump.snap (max_seq 2)
+recovery: replayed 1 log records after seq 2 (skipped 2 already in the snapshot, last seq 3)
+$ redis-cli -p 6380 GET k
+"v"
+$ redis-cli -p 6380 TTL session        # aged by the time the server was down
+(integer) 57
+```
+
+A record torn by a crash ends replay: the file is truncated where that record began, and `INFO persistence` reports `aof_truncated_records:1` and the offset.
+A snapshot killed half-way leaves the previous `dump.snap` untouched; the orphaned `dump.snap.tmp-<pid>` is deleted at the next start.
 
 ### Talk to it with nc
 
@@ -100,35 +135,38 @@ A malformed frame earns a protocol error and a closed connection, rather than a 
 
 ```sh
 $ printf '*1\r\n+x\r\n' | nc -q1 localhost 6380
--ERR Protocol error: expected '$', got something else
+-ERR Protocol error: expected '$', got '+'
 ```
 
-### Benchmark
+### INFO
+
+`redis-cli INFO` and `redis-cli --stat` work.
+The sections are `Server`, `Clients`, `Stats`, `Persistence`, `Replication` and `Keyspace`, in Redis's format (MASTER-PLAN Section 4.10).
+`goroutines` in the `Server` section is a project field, not a Redis one: it lets the 100-connection test prove that open connections add no goroutines.
+
+### Docker
 
 ```sh
-$ redis-benchmark -p 6380 -t ping -n 100000 -q          # one command at a time
-$ redis-benchmark -p 6380 -t ping -n 100000 -P 16 -q    # 16 deep pipeline
-PING_MBULK: 714285.69 requests per second, p50=1.103 msec
+make docker    # build the image from deploy/Dockerfile
+make demo      # start deploy/docker-compose.yml in the background
+docker compose -f deploy/docker-compose.yml run --rm cli PING
 ```
 
-### Watch the design hold
+The image is a static binary on `scratch`, built with `golang:1.22` to match `go.mod` and CI, and keeps its data in a volume mounted at `/data`.
 
-The point of the epoll loop is that connections do not cost threads.
-These two tests assert it, rather than merely demonstrating it:
+### Benchmark tools
 
 ```sh
-go test ./internal/server -run 'HundredConnections|LeakNoDescriptors' -v -count=1
+bench/spec.sh > spec.txt           # CPU, cores, RAM, kernel, governor, Go and Redis versions
+bench/sample.sh <pid> <out.csv>    # CPU and memory of a process every 100 ms, as CSV
+bench/peaks.sh <out.csv>           # peak CPU and memory from that file
 ```
 
-The parser runs on bytes a stranger controls, so it is fuzzed:
-
-```sh
-go test ./internal/resp -fuzz FuzzParse -fuzztime 30s
-```
+The runner that drives `redis-benchmark` against both servers (T8.01) is not written yet, because it needs official Redis installed as the baseline.
 
 ## Design
 
-Three decisions carry the whole project.
+Three decisions carry the whole project; [DECISIONS.md](docs/DECISIONS.md) records each with the alternatives rejected.
 
 **One thread, raw epoll.**
 The loop calls `syscall.EpollCreate1`, `Accept4` and `EpollWait` directly and runs under `runtime.LockOSThread`.
@@ -136,16 +174,13 @@ Because a single thread owns the keyspace, no command needs a lock and no read c
 Concurrency lives in the socket multiplexing, not in the data.
 
 **Timers inside the loop.**
-The `EpollWait` timeout is a 100 ms tick that will drive active expiry, the `everysec` fsync request and the BGSAVE completion check.
+The `EpollWait` timeout is a 100 ms tick that drives the active expiry sweep, the `everysec` fsync request and the `BGSAVE` completion check.
 No `time.Ticker` goroutine ever touches state.
+Besides the loop there are at most three goroutines (fsync, snapshot writer and, with S3, compaction), none of which touches the live keyspace; each signals the loop through an `eventfd` in the epoll set.
 
 **Absolute expiry timestamps.**
 No relative TTL is persisted or replicated anywhere; `EXPIRE` is rewritten to `PEXPIREAT k <abs ms>` before it reaches the log.
-A key that expired while the server was down stays expired after recovery.
-
-Exactly three background goroutines are planned (fsync ticker, snapshot writer, compaction copier), none of which touches the live keyspace; each signals completion back through an `eventfd` in the epoll set.
-INFO reports a debug field, `goroutines` in the `Server` section, read from `runtime.NumGoroutine()`.
-It exists only so the 100-connection test can prove that open connections add no goroutines; it is not part of the Redis INFO format.
+A key that expired while the server was down stays expired after recovery, and one that did not comes back with its TTL aged.
 
 ## Commands
 
@@ -161,39 +196,54 @@ HSET HGET HDEL HLEN HGETALL
 SADD SREM SISMEMBER SMEMBERS SINTER
 ```
 
+`QUIT` closes the connection, and `PEXPIREAT` is accepted because it is the form `EXPIRE` takes in the log.
+The stretch commands (`ZADD`, `MULTI`, `SUBSCRIBE`, `REPLICAOF` and their families) are not implemented yet and return `unknown command`.
+
 ## Layout
 
 ```
 cmd/redis-from-scratch   flags, recovery, serve
 internal/resp            RESP2 reader and writer
-internal/server          epoll loop, connections, buffers
-internal/command         command table, dispatcher, handlers
-internal/store           keyspace, value model, expiry, clock
+internal/server          epoll loop, connections, buffers, eventfd, INFO
+internal/command         command table, dispatcher, handlers, replay
+internal/store           keyspace, value model, expiry, copy-on-write snapshot
 internal/storetest       FakeClock for deterministic expiry tests
-internal/aof             log records, fsync policy, replay
+internal/aof             log record codec, writer and fsync policies, replay
 internal/snapshot        snapshot format, writer, loader
-internal/recovery        startup sequence
-test/integration         redis-cli, crash, expiry, concurrency tests
-bench/                   benchmark harness and results
+internal/recovery        startup sequence: snapshot, log tail, expired keys
+internal/testutil        ServerProcess harness and RESP client for tests
+test/integration         redis-cli, crash, expiry, concurrency, property tests
+bench/                   machine spec and CPU/memory sampling scripts
+deploy/                  Dockerfile and docker-compose.yml
+scripts/tasks/           GitHub issue sync and the RTM generator
 ```
 
 ## Development
 
 ```sh
-make build   # bin/redis-from-scratch
-make test    # go test ./..., unit and integration
-make lint    # gofmt -l . then go vet ./...
-make bench   # see bench/
+make build        # bin/redis-from-scratch
+make test         # build, then go test -race over unit and integration tests
+make test-short   # the same, skipping the tests that sleep for seconds
+make lint         # gofmt -l . then go vet ./...
+make diagrams     # render docs/diagrams/*.dot to PNG (needs graphviz)
+make rtm          # regenerate docs/RTM.md from GitHub (needs gh)
+make docker       # build the container image
 ```
 
-Integration tests need `redis-tools` installed for `redis-cli` and `redis-benchmark`.
-A single package: `go test ./internal/store -run TestName -v`.
+Integration tests run the real binary through `internal/testutil` and need `redis-tools` installed for `redis-cli` and `redis-benchmark`.
+CI fails if any test is skipped.
+A single test: `go test ./internal/store -run TestName -v`.
 
 ## Documentation
 
 - [PROPOSAL.md](docs/PROPOSAL.md) - scope, and the invariants the tests must prove.
 - [IMPLEMENTATION-PLAN.md](docs/IMPLEMENTATION-PLAN.md) - phases and checkpoints.
-- [MASTER-PLAN.md](docs/MASTER-PLAN.md) - layout, frozen contracts, on-disk formats. Read this before writing code.
+- [MASTER-PLAN.md](docs/MASTER-PLAN.md) - layout, on-disk formats, milestones. Read this before writing code.
+- [CONTRACTS.md](docs/CONTRACTS.md) - the interfaces frozen at the end of Week 2, and what was added since.
+- [DECISIONS.md](docs/DECISIONS.md) - why each design choice was made and what was rejected.
+- [RTM.md](docs/RTM.md) - requirements traceability: every issue, its requirement, its blockers and its status.
+- [VIVA-LEDGER.md](docs/VIVA-LEDGER.md) - viva questions with answers and evidence.
+- [docs/diagrams/](docs/diagrams/) - architecture and request lifecycle, as Graphviz sources and PNGs.
 - [docs/tasks/](docs/tasks/README.md) - the board: one self-contained task per file, with dependencies and the critical path.
 
 ## Constraints
