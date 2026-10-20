@@ -5,15 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/SVIGHNESH/RedForge/internal/command"
 	"github.com/SVIGHNESH/RedForge/internal/server"
+	"github.com/SVIGHNESH/RedForge/internal/store"
 )
-
-// nowMs is the loop's clock. T0.07 replaces it with the injectable Clock
-// interface so tests can freeze time.
-func nowMs() int64 { return time.Now().UnixMilli() }
 
 func main() {
 	var (
@@ -28,8 +24,11 @@ func main() {
 		return
 	}
 
+	// The wall clock is the only production clock (MASTER-PLAN 3.4). The
+	// store and the dispatcher share it so passive expiry and Ctx.Now agree.
+	clock := store.RealClock{}
 	srv := server.New()
-	command.Install(srv, nowMs)
+	command.Install(srv, store.New(clock), clock)
 	if err := srv.Listen(*bind, *port); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

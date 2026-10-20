@@ -5,6 +5,7 @@ import (
 
 	"github.com/SVIGHNESH/RedForge/internal/resp"
 	"github.com/SVIGHNESH/RedForge/internal/server"
+	"github.com/SVIGHNESH/RedForge/internal/store"
 )
 
 // Flags describe what a command does, so the dispatcher and later the log,
@@ -25,10 +26,13 @@ const (
 )
 
 // Ctx is what a handler is given. The shape is frozen in MASTER-PLAN
-// Section 4.4; the Store field arrives with T0.07.
+// Section 4.4.
 type Ctx struct {
 	Client *server.Client
-	Srv    *server.Server
+	// Store is the keyspace. Handlers reach every key through it, and every
+	// collection mutation goes through Store.Mutable (MASTER-PLAN 4.3).
+	Store store.Store
+	Srv   *server.Server
 	// Now is the loop's view of the clock in milliseconds, read once per
 	// command so every handler in one command sees the same instant.
 	Now int64
