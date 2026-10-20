@@ -192,12 +192,9 @@ func TestForEachVisitsAllAndStops(t *testing.T) {
 	}
 }
 
-func TestRemainingStubsReturnZeroValues(t *testing.T) {
+func TestSnapshotStubReturnsNil(t *testing.T) {
 	s, _ := newTestStore()
 	putString(s, "k", "v", 0)
-	if s.SweepExpired(20, time.Millisecond) != 0 {
-		t.Error("SweepExpired stub != 0, want 0 until T3.02")
-	}
 	if s.Snapshot() != nil {
 		t.Error("Snapshot stub != nil, want nil until T6.02")
 	}

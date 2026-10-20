@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"sync/atomic"
 	"syscall"
+	"time"
 )
 
 const (
@@ -18,10 +19,11 @@ const (
 	readChunk = 16 * 1024
 	// maxEvents is how many ready fds one EpollWait call reports.
 	maxEvents = 128
-	// tickMs is the EpollWait timeout. It is the loop's only timer: active
-	// expiry, the everysec fsync request and the BGSAVE completion check all
-	// hang off it (MASTER-PLAN Section 3.1).
-	tickMs = 100
+	// tickInterval is the loop's only timer. Active expiry, the everysec
+	// fsync request and the BGSAVE completion check all hang off it, and
+	// EpollWait's timeout is the time left until the next one (MASTER-PLAN
+	// Section 3.3), so no goroutine or time.Ticker is involved.
+	tickInterval = 100 * time.Millisecond
 )
 
 // ExecuteFunc consumes a client's read buffer and appends replies to its write
@@ -45,8 +47,9 @@ type Server struct {
 	// command runs one parsed command; the dispatcher is installed here.
 	command CommandFunc
 
-	// Tick runs once per EpollWait timeout, on the loop thread.
-	Tick func(s *Server)
+	// tickers run on the loop thread once per tickInterval, in the order
+	// they were registered with OnTick.
+	tickers []func()
 
 	// Appenders receives every propagated write with its sequence number,
 	// in loop order. T5.02 registers the AOF writer here and T9.07 the
@@ -152,8 +155,9 @@ func (s *Server) Serve() error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
+	nextTick := time.Now().Add(tickInterval)
 	for !s.stopping.Load() {
-		n, err := syscall.EpollWait(s.epfd, s.events, tickMs)
+		n, err := syscall.EpollWait(s.epfd, s.events, waitMs(nextTick))
 		if err != nil {
 			if errors.Is(err, syscall.EINTR) {
 				continue
@@ -184,12 +188,32 @@ func (s *Server) Serve() error {
 				s.readReady(c)
 			}
 		}
-		if s.Tick != nil {
-			s.Tick(s)
+		// A busy loop is woken by I/O long before the timeout, so the tick
+		// is driven by the deadline, not by EpollWait returning no events.
+		if now := time.Now(); !now.Before(nextTick) {
+			for _, fn := range s.tickers {
+				fn()
+			}
+			nextTick = now.Add(tickInterval)
 		}
 	}
 	return nil
 }
+
+// waitMs is the EpollWait timeout that wakes the loop in time for the next
+// tick: the remaining time rounded up to a whole millisecond, never negative.
+func waitMs(nextTick time.Time) int {
+	d := time.Until(nextTick)
+	if d <= 0 {
+		return 0
+	}
+	return int((d + time.Millisecond - 1) / time.Millisecond)
+}
+
+// OnTick registers fn to run on the loop thread every tickInterval. Call it
+// before Serve. fn must be short, because the loop serves nothing while it
+// runs.
+func (s *Server) OnTick(fn func()) { s.tickers = append(s.tickers, fn) }
 
 // Stop asks the loop to return. It is safe to call from another goroutine; the
 // loop notices within one tick.

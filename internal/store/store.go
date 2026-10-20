@@ -1,7 +1,5 @@
 package store
 
-import "time"
-
 // mapStore is the single Store implementation for T0.07: two maps owned by
 // the loop thread, so no lock is needed. m holds every key; expires mirrors
 // the subset with ExpireAt != 0 so T3.02 can sample expiring keys without
@@ -15,6 +13,11 @@ type mapStore struct {
 	// expiredKeys counts keys reclaimed because their expiry passed, by the
 	// passive path or the sweep. INFO reports it as expired_keys.
 	expiredKeys int64
+	// sweepDeleted counts only the sweep's share of expiredKeys, and
+	// sweepRounds how many samples the sweep has taken; tests use the latter
+	// to prove an idle sweep stops after one sample.
+	sweepDeleted int64
+	sweepRounds  int64
 }
 
 // Compile-time proof that the frozen interface is satisfied.
@@ -106,11 +109,6 @@ func (s *mapStore) Len() int { return len(s.m) }
 
 // ExpiringLen is the number of keys carrying an expiry.
 func (s *mapStore) ExpiringLen() int { return len(s.expires) }
-
-// SweepExpired is a T3.02 stub: it will sample sampleSize keys, delete the
-// expired ones, and repeat while over 25 percent were expired, bounded by
-// budget.
-func (s *mapStore) SweepExpired(sampleSize int, budget time.Duration) int { return 0 }
 
 // Snapshot is a T6.02 stub: it will copy the top-level map, set
 // snapshotActive and return the clone as a SnapshotView.

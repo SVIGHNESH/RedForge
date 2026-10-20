@@ -1,5 +1,7 @@
 package store
 
+import "time"
+
 // Expiry for M4. Every expiry is an absolute Unix millisecond timestamp in
 // Entry.ExpireAt, mirrored in s.expires so the sweep can sample expiring
 // keys without walking the whole keyspace. No relative TTL is stored
@@ -17,12 +19,59 @@ type Counters interface {
 	// ExpiredKeys is how many keys were reclaimed because their expiry
 	// passed, whether found by a lookup or by the active sweep.
 	ExpiredKeys() int64
+	// SweepDeleted is the active sweep's share of ExpiredKeys.
+	SweepDeleted() int64
 }
 
 var _ Counters = (*mapStore)(nil)
 
 // ExpiredKeys implements Counters.
 func (s *mapStore) ExpiredKeys() int64 { return s.expiredKeys }
+
+// SweepDeleted implements Counters.
+func (s *mapStore) SweepDeleted() int64 { return s.sweepDeleted }
+
+// SweepExpired is the active half of expiry, run from the loop tick so keys
+// that are never touched again are still reclaimed. The algorithm is the one
+// Redis uses: look at up to sampleSize keys from the expiring index, delete
+// the expired ones, and sample again while more than 25 percent of a sample
+// was expired, stopping once budget is spent. Go randomises where each range
+// over a map starts, so ranging and stopping after sampleSize keys is a
+// random sample.
+//
+// Expiry is judged by the injected clock; the budget is wall time, because it
+// bounds how long the loop is unavailable to clients. Deletions are counted
+// but never propagated (MASTER-PLAN Section 4.4).
+func (s *mapStore) SweepExpired(sampleSize int, budget time.Duration) int {
+	if sampleSize <= 0 {
+		return 0
+	}
+	start := time.Now()
+	deleted := 0
+	for len(s.expires) > 0 {
+		s.sweepRounds++
+		now := s.clock.NowMs()
+		sampled, expired := 0, 0
+		for key, at := range s.expires {
+			if at <= now {
+				delete(s.m, key)
+				delete(s.expires, key)
+				expired++
+			}
+			sampled++
+			if sampled == sampleSize {
+				break
+			}
+		}
+		deleted += expired
+		if expired*4 <= sampled || time.Since(start) >= budget {
+			break
+		}
+	}
+	s.expiredKeys += int64(deleted)
+	s.sweepDeleted += int64(deleted)
+	return deleted
+}
 
 // expireIfDue deletes key when its expiry has passed and reports whether it
 // did. Lookup, Mutable, Exists and Keys all funnel through here, which is the
