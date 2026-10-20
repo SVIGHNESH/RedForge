@@ -13,20 +13,18 @@ func init() {
 	register(&Command{Name: "SINTER", Arity: -2, Flags: ReadOnly, Handler: sinterCommand})
 }
 
-// setWrongType is the MASTER-PLAN 4.11 wording. It is local to the set
-// handlers so this file does not depend on the string commands landing
-// first; the copies can be folded into one shared constant later.
-var setWrongType = resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value")
-
 // setLookup returns the set stored at key for reading. A missing key is
 // (nil, nil); a key of another type is (nil, WRONGTYPE).
+// Only read commands call it, so it counts keyspace_hits and
+// keyspace_misses the way Redis counts read lookups.
 func setLookup(ctx *Ctx, key []byte) (*store.SetVal, resp.Reply) {
 	e, ok := ctx.Store.Lookup(string(key))
+	countLookup(ctx, ok)
 	if !ok {
 		return nil, nil
 	}
 	if e.Type != store.TSet {
-		return nil, setWrongType
+		return nil, errWrongType
 	}
 	return e.Val.(*store.SetVal), nil
 }
@@ -39,7 +37,7 @@ func setMutable(ctx *Ctx, key []byte) (*store.SetVal, resp.Reply) {
 		return nil, nil
 	}
 	if e.Type != store.TSet {
-		return nil, setWrongType
+		return nil, errWrongType
 	}
 	return e.Val.(*store.SetVal), nil
 }
