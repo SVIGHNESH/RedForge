@@ -138,6 +138,18 @@ func (sv *Saver) complete() {
 	}
 }
 
+// Loaded tells the saver about the snapshot startup recovery loaded, so INFO
+// last_bgsave_seq and last_bgsave_time describe the dump.snap on disk after
+// a restart instead of reading 0, as Redis reports its last save time from
+// the file it loaded.
+func (sv *Saver) Loaded(maxSeq uint64) {
+	sv.lastSeq = maxSeq
+	sv.lastStatus = "ok"
+	if st, err := os.Stat(filepath.Join(sv.dir, FileName)); err == nil {
+		sv.lastTime = st.ModTime().Unix()
+	}
+}
+
 // OnDone registers fn to run on the loop thread after every save.
 func (sv *Saver) OnDone(fn func(boundary uint64, err error)) { sv.onDone = fn }
 
