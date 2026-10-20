@@ -26,7 +26,10 @@ The price is that throughput is bounded by one core, and any O(N) command blocks
 The measured cost is the Scenario 5 client sweep against official Redis, which locates the point where the loop saturates.
 
 **Evidence.**
-PROPOSAL 6.1; DECISIONS D1 and D2; `TestHundredConnectionsAddNoGoroutines` (internal/server); CC3 shared-key `INCR` test (T3.04); Scenario 5 results (T10.03, pending).
+PROPOSAL 6.1; DECISIONS D1 and D2; `TestHundredConnectionsAddNoGoroutines` (internal/server and test/integration); Scenario 5 results (T10.03, pending).
+The executable proof of atomicity is CC3 (T3.04): `TestSharedKeyIncrLosesNoUpdates` and `TestSharedKeyPipelinedIncrLosesNoUpdates` in `test/integration/concurrency_test.go`.
+100 clients each send 1000 `INCR` on one key, one at a time and then pipelined in batches of 100, and the final value must be exactly 100000.
+A lost update, which is what breaking single-threaded atomicity would cause, leaves a smaller number.
 
 ## 2. Why absolute expiration timestamps rather than remaining TTL?
 
