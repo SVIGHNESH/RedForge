@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/SVIGHNESH/RedForge/internal/testutil"
 )
 
 // decodeReply turns one RESP2 reply into Go values: simple strings and bulk
@@ -172,16 +174,14 @@ func TestCommandOtherSubcommandsAreErrors(t *testing.T) {
 // COMMAND DOCS, needs a terminal and is checked by hand in the PR and by the
 // T0.09 smoke test.
 func TestRedisCLIRunsCommandsFromStdin(t *testing.T) {
-	cli, err := exec.LookPath("redis-cli")
-	if err != nil {
-		t.Skip("redis-cli not installed")
-	}
+	cli := testutil.RedisCLI(t)
 	addr, _ := startLoop(t, nil)
 	host, port, _ := strings.Cut(addr, ":")
 	cmd := exec.Command(cli, "-h", host, "-p", port)
 	cmd.Stdin = strings.NewReader("SET greeting hello\nGET greeting\nCOMMAND COUNT\n")
 	done := make(chan struct{})
 	var out []byte
+	var err error
 	go func() {
 		out, err = cmd.CombinedOutput()
 		close(done)
