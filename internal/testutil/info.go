@@ -3,7 +3,14 @@ package testutil
 import (
 	"fmt"
 	"strings"
+	"testing"
 )
+
+// MustInfo runs INFO [section] on c and returns the parsed fields.
+func MustInfo(t testing.TB, c *Client, section string) map[string]string {
+	t.Helper()
+	return c.Info(t, section).Values
+}
 
 // InfoReply is an INFO payload as ordered sections of key:value fields.
 type InfoReply struct {
