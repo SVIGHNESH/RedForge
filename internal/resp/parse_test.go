@@ -175,10 +175,113 @@ func TestParseCommandStopsAtFirstFrame(t *testing.T) {
 	}
 }
 
-func TestParseCommandRejectsNonCommandFrames(t *testing.T) {
-	for _, in := range []string{"+OK\r\n", ":1\r\n", "*1\r\n:1\r\n", "*1\r\n$-1\r\n"} {
+// Each expected message was captured from a live redis-server (Valkey 9.1,
+// same wording as Redis 7) fed the same bytes, so a client sees identical
+// errors from both servers.
+func TestParseCommandProtocolErrorsMatchRedis(t *testing.T) {
+	cases := []struct {
+		name, in, want string
+	}{
+		{"null bulk argument", "*2\r\n$4\r\nECHO\r\n$-1\r\n", "Protocol error: invalid bulk length"},
+		{"plus in bulk length", "*1\r\n$+4\r\nPING\r\n", "Protocol error: invalid bulk length"},
+		{"letter in bulk length", "*1\r\n$x\r\n", "Protocol error: invalid bulk length"},
+		{"leading zero in bulk length", "*1\r\n$04\r\nPING\r\n", "Protocol error: invalid bulk length"},
+		{"oversized bulk length", "*1\r\n$536870913\r\n", "Protocol error: invalid bulk length"},
+		{"plus in array length", "*+1\r\n$4\r\nPING\r\n", "Protocol error: invalid multibulk length"},
+		{"array above the cap", "*1048577\r\n", "Protocol error: invalid multibulk length"},
+		{"integer element", "*1\r\n:1\r\n", "Protocol error: expected '$', got ':'"},
+		{"nested array element", "*1\r\n*1\r\n$4\r\nPING\r\n", "Protocol error: expected '$', got '*'"},
+		{"control byte element", "*1\r\n\n", `Protocol error: expected '$', got '\xa'`},
+		{"lone lf after array header", "*1\n", "Protocol error: unbalanced line ending"},
+		{"lone lf after bulk", "*1\r\n$4\r\nPING\n\n", "Protocol error: unbalanced line ending"},
+		{"inline over 64 KB", strings.Repeat("a", MaxInlineLength+1), "Protocol error: too big inline request"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			args, n, err := ParseCommand([]byte(tc.in))
+			if !IsProtocolError(err) {
+				t.Fatalf("ParseCommand(%q) = %q, %d, %v; want protocol error", tc.in, args, n, err)
+			}
+			if err.Error() != tc.want {
+				t.Errorf("message = %q, want %q", err.Error(), tc.want)
+			}
+		})
+	}
+}
+
+// Redis frames anything that does not start with '*' as an inline command, so
+// a bare "+OK" is the command "+OK" (later an unknown-command error), not a
+// protocol error. Empty requests are consumed and produce no command.
+func TestParseCommandFramingMatchesRedis(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		args []string
+		n    int
+	}{
+		{"bare simple string is inline", "+OK\r\n", []string{"+OK"}, 5},
+		{"bare integer is inline", ":1\r\n", []string{":1"}, 4},
+		{"bare bulk header is inline", "$4\r\nPING\r\n", []string{"$4"}, 4},
+		{"empty array is ignored", "*0\r\nPING\r\n", nil, 4},
+		{"null array is ignored", "*-1\r\nPING\r\n", nil, 5},
+		{"empty bulk argument", "*2\r\n$4\r\nECHO\r\n$0\r\n\r\n", []string{"ECHO", ""}, 20},
+		{"inline with lf only", "PING\n", []string{"PING"}, 5},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			args, n, err := ParseCommand([]byte(tc.in))
+			if err != nil {
+				t.Fatalf("ParseCommand(%q) err = %v", tc.in, err)
+			}
+			if n != tc.n {
+				t.Errorf("n = %d, want %d", n, tc.n)
+			}
+			if len(args) != len(tc.args) {
+				t.Fatalf("args = %q, want %q", args, tc.args)
+			}
+			for i := range args {
+				if string(args[i]) != tc.args[i] {
+					t.Errorf("args[%d] = %q, want %q", i, args[i], tc.args[i])
+				}
+			}
+		})
+	}
+}
+
+// Every proper prefix of a valid command must be reported incomplete, never an
+// error, or a client whose bytes arrive one at a time would be cut off.
+func TestParseCommandEveryPrefixIsIncomplete(t *testing.T) {
+	full := "*3\r\n$3\r\nSET\r\n$1\r\nk\r\n$10\r\n0123456789\r\n"
+	for i := 0; i < len(full); i++ {
+		if _, n, err := ParseCommand([]byte(full[:i])); err != ErrIncomplete || n != 0 {
+			t.Fatalf("prefix %q: n %d, err %v; want ErrIncomplete", full[:i], n, err)
+		}
+	}
+	if _, n, err := ParseCommand([]byte(full)); err != nil || n != len(full) {
+		t.Fatalf("full frame: n %d, err %v", n, err)
+	}
+}
+
+// An error already visible in the received bytes is reported before the rest
+// of the frame arrives, so a client cannot hold a bad frame open.
+func TestParseCommandReportsErrorsBeforeTheFrameCompletes(t *testing.T) {
+	for _, in := range []string{"*2\r\n:", "*2\r\n$-1\r\n", "*2\r\n$4\r\nPING\r\n*"} {
 		if _, _, err := ParseCommand([]byte(in)); !IsProtocolError(err) {
 			t.Errorf("ParseCommand(%q) err = %v, want protocol error", in, err)
+		}
+	}
+}
+
+func TestParseIntMatchesRedisString2ll(t *testing.T) {
+	good := map[string]int64{"0": 0, "7": 7, "-1": -1, "1048576": 1048576, "9223372036854775807": 1<<63 - 1}
+	for in, want := range good {
+		if got, err := parseInt([]byte(in)); err != nil || got != want {
+			t.Errorf("parseInt(%q) = %d, %v; want %d", in, got, err, want)
+		}
+	}
+	for _, in := range []string{"", "-", "+1", "01", "-0", " 1", "1 ", "1a", "9223372036854775808", "12345678901234567890"} {
+		if _, err := parseInt([]byte(in)); err == nil {
+			t.Errorf("parseInt(%q) accepted, want error", in)
 		}
 	}
 }
@@ -196,6 +299,10 @@ func FuzzParse(f *testing.F) {
 	for _, seed := range []string{
 		"+OK\r\n", ":1\r\n", "$3\r\nabc\r\n", "*2\r\n$4\r\nPING\r\n$3\r\nfoo\r\n",
 		"*-1\r\n", "PING\r\n", "$\r\n", "*x\r\n", "\x00\x01",
+		// T1.01 malformed cases.
+		"*2\r\n$4\r\nECHO\r\n$-1\r\n", "*1\r\n$+4\r\nPING\r\n", "*+1\r\n$4\r\nPING\r\n",
+		"*1\r\n$04\r\nPING\r\n", "*1048577\r\n", "*1\r\n:1\r\n", "*1\r\n*1\r\n$4\r\nPING\r\n",
+		"*1\n", "*1\r\n$4\r\nPING\n\n", "*0\r\n", "$4\r\nPING\r\n", "HELLO 3\r\n",
 	} {
 		f.Add([]byte(seed))
 	}
@@ -209,6 +316,40 @@ func FuzzParse(f *testing.F) {
 		}
 		if err == nil && v.Kind == 0 {
 			t.Fatalf("parsed value has no kind")
+		}
+	})
+}
+
+// ParseCommand is the path the loop actually runs on client bytes. Besides the
+// FuzzParse invariants, an error must never be followed by args, and a
+// successful parse of a complete command must be stable when more bytes are
+// appended (pipelining depends on it).
+func FuzzParseCommand(f *testing.F) {
+	for _, seed := range []string{
+		"PING\r\n", "*1\r\n$4\r\nPING\r\n", "*2\r\n$4\r\nECHO\r\n$-1\r\n", "*1\r\n$+4\r\nPING\r\n",
+		"*+1\r\n$4\r\nPING\r\n", "*1048577\r\n", "*1\r\n:1\r\n", "*1\n", "*0\r\n", "*-1\r\n",
+		"$4\r\nPING\r\n", "+OK\r\n", "HELLO 3\r\n", "\r\n", "*1\r\n$4\r\nPING\n\n",
+	} {
+		f.Add([]byte(seed))
+	}
+	f.Fuzz(func(t *testing.T, buf []byte) {
+		args, n, err := ParseCommand(buf)
+		if n < 0 || n > len(buf) {
+			t.Fatalf("n = %d out of range for %d bytes", n, len(buf))
+		}
+		if err != nil && (n != 0 || args != nil) {
+			t.Fatalf("error %v with n %d args %q", err, n, args)
+		}
+		if err == nil && n == 0 {
+			t.Fatalf("success consumed nothing")
+		}
+		if err != nil {
+			return
+		}
+		more := append(append([]byte{}, buf...), "*1\r\n$4\r\nPING\r\n"...)
+		args2, n2, err2 := ParseCommand(more)
+		if err2 != nil || n2 != n || len(args2) != len(args) {
+			t.Fatalf("appending bytes changed the first command: %q/%d/%v vs %q/%d", args2, n2, err2, args, n)
 		}
 	})
 }

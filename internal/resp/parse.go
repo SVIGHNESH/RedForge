@@ -181,35 +181,110 @@ func parseInline(buf []byte) (Value, int, error) {
 	return Value{Kind: KindArray, Array: items}, i + 1, nil
 }
 
-// parseInt is strconv.ParseInt over a byte slice without allocating.
+// parseInt parses a RESP length or integer the way Redis's string2ll does: an
+// optional '-', then digits with no leading zero and nothing else. strconv
+// alone would also accept "+4", which Redis rejects as a protocol error.
 func parseInt(b []byte) (int64, error) {
-	if len(b) == 0 {
+	digits := b
+	if len(digits) > 0 && digits[0] == '-' {
+		digits = digits[1:]
+	}
+	if len(digits) == 0 || len(digits) > 19 {
 		return 0, strconv.ErrSyntax
+	}
+	if digits[0] == '0' && len(b) > 1 {
+		// "0" is fine; "07" and "-0" are not, as in Redis's string2ll.
+		return 0, strconv.ErrSyntax
+	}
+	for _, ch := range digits {
+		if ch < '0' || ch > '9' {
+			return 0, strconv.ErrSyntax
+		}
 	}
 	return strconv.ParseInt(string(b), 10, 64)
 }
 
 // ParseCommand reads one client command from the front of buf and returns its
-// argument vector. Clients may send either an array of bulk strings or an
-// inline line; anything else is a protocol error. An empty inline line yields
-// nil args and a non-zero n, which the caller skips.
+// argument vector, framing requests exactly as Redis does:
+//
+//   - A buffer starting with '*' is a multibulk request whose every element
+//     must be a bulk string. Any other element type is "expected '$', got 'x'"
+//     and a null bulk ($-1) is "invalid bulk length".
+//   - Anything else is an inline command line, so "+OK" or ":1" sent bare
+//     becomes an unknown command rather than a protocol error.
+//   - "*0" and "*-1" are empty requests: nil args with a non-zero n, which
+//     the caller skips without replying. An empty inline line is the same.
+//
+// Errors in bytes already received are reported at once, even when the rest
+// of the frame has not arrived yet, so a bad client is cut off early.
 func ParseCommand(buf []byte) (args [][]byte, n int, err error) {
-	v, n, err := Parse(buf)
+	if len(buf) == 0 {
+		return nil, 0, ErrIncomplete
+	}
+	if buf[0] != '*' {
+		v, n, err := parseInline(buf)
+		if err != nil {
+			return nil, 0, err
+		}
+		if len(v.Array) == 0 {
+			return nil, n, nil
+		}
+		args = make([][]byte, len(v.Array))
+		for i, item := range v.Array {
+			args[i] = item.Str
+		}
+		return args, n, nil
+	}
+	return parseMultibulk(buf)
+}
+
+func parseMultibulk(buf []byte) ([][]byte, int, error) {
+	line, n, err := readLine(buf, 1)
 	if err != nil {
 		return nil, 0, err
 	}
-	if v.Kind != KindArray {
-		return nil, 0, protoErr("expected '$', got '" + string(buf[0]) + "'")
+	count, perr := parseInt(line)
+	if perr != nil || count > MaxArrayLength {
+		return nil, 0, protoErr("invalid multibulk length")
 	}
-	if v.Null || len(v.Array) == 0 {
+	if count <= 0 {
+		// Redis ignores *0 and *-1 (and any other non-positive count).
 		return nil, n, nil
 	}
-	args = make([][]byte, 0, len(v.Array))
-	for _, item := range v.Array {
-		if item.Kind != KindBulk || item.Null {
-			return nil, 0, protoErr("expected '$', got something else")
+	args := make([][]byte, 0, count)
+	for i := int64(0); i < count; i++ {
+		if n >= len(buf) {
+			return nil, 0, ErrIncomplete
 		}
-		args = append(args, item.Str)
+		if buf[n] != '$' {
+			return nil, 0, protoErr("expected '$', got '" + printable(buf[n]) + "'")
+		}
+		line, hdr, err := readLine(buf, n+1)
+		if err != nil {
+			return nil, 0, err
+		}
+		length, perr := parseInt(line)
+		if perr != nil || length < 0 || length > MaxBulkLength {
+			return nil, 0, protoErr("invalid bulk length")
+		}
+		end := hdr + int(length) + 2
+		if end > len(buf) {
+			return nil, 0, ErrIncomplete
+		}
+		if buf[end-2] != '\r' || buf[end-1] != '\n' {
+			return nil, 0, protoErr("unbalanced line ending")
+		}
+		args = append(args, buf[hdr:end-2])
+		n = end
 	}
 	return args, n, nil
+}
+
+// printable renders one byte for an error message without letting a CR or LF
+// split the reply frame.
+func printable(b byte) string {
+	if b < 0x20 || b == 0x7f {
+		return `\x` + strconv.FormatUint(uint64(b), 16)
+	}
+	return string([]byte{b})
 }

@@ -28,6 +28,12 @@ func (s *Server) SetCommand(fn CommandFunc) { s.command = fn }
 func execute(s *Server, c *Client) int {
 	consumed := 0
 	for {
+		if c.closing {
+			// After QUIT or a protocol error Redis runs nothing else the
+			// client sent. Without this check a later read would re-parse
+			// the bad frame and queue the error a second time.
+			return consumed
+		}
 		if len(c.wbuf) > maxOutputBuffer {
 			// The peer is not draining its replies. Drop it instead of
 			// growing without bound.
