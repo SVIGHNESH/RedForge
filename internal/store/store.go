@@ -18,6 +18,12 @@ type mapStore struct {
 	// to prove an idle sweep stops after one sample.
 	sweepDeleted int64
 	sweepRounds  int64
+
+	// loading is set while recovery replays the log. Passive expiry and
+	// the sweep are off, so a record replayed after its key's deadline
+	// acts on the key exactly as it did when it was written; recovery
+	// drops the due keys afterwards with DropExpired.
+	loading bool
 }
 
 // Compile-time proof that the frozen interface is satisfied.

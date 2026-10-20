@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/SVIGHNESH/RedForge/internal/aof"
 	"github.com/SVIGHNESH/RedForge/internal/command"
@@ -36,7 +37,26 @@ func main() {
 		os.Exit(2)
 	}
 	srv := server.New()
-	command.Install(srv, store.New(clock), clock)
+	st := store.New(clock)
+	command.Install(srv, st, clock)
+
+	// Replay the log before opening it for append, so a torn tail is cut
+	// off first. T5.04 moves this into internal/recovery.
+	loader := st.(store.Loader)
+	loader.SetLoading(true)
+	now := clock.NowMs()
+	lastSeq, replayed, err := aof.Replay(filepath.Join(*dir, aof.FileName), 0, func(seq uint64, args [][]byte) {
+		if err := command.Replay(srv, st, now, args); err != nil {
+			fmt.Fprintf(os.Stderr, "replay seq %d: %v\n", seq, err)
+		}
+	})
+	loader.SetLoading(false)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	srv.SetSeq(lastSeq)
+	srv.RegisterInfo("Persistence", replayed.Info)
 
 	aofw, err := aof.Open(*dir, policy, clock.NowMs)
 	if err != nil {

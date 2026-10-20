@@ -175,7 +175,8 @@ func persistenceInfo(ctx *Ctx) []server.InfoField {
 	return []server.InfoField{
 		{Key: "aof_fsync_policy", Value: "everysec"},
 		{Key: "aof_current_seq", Value: strconv.FormatUint(ctx.Srv.CurrentSeq(), 10)},
-		field("aof_last_truncation_offset", 0),
+		// -1 means replay found no torn or corrupt record (T5.03).
+		field("aof_last_truncation_offset", -1),
 		field("aof_truncated_records", 0),
 		field("bgsave_in_progress", 0),
 		{Key: "last_bgsave_status", Value: "ok"},

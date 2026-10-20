@@ -43,7 +43,7 @@ func (s *mapStore) SweepDeleted() int64 { return s.sweepDeleted }
 // bounds how long the loop is unavailable to clients. Deletions are counted
 // but never propagated (MASTER-PLAN Section 4.4).
 func (s *mapStore) SweepExpired(sampleSize int, budget time.Duration) int {
-	if sampleSize <= 0 {
+	if sampleSize <= 0 || s.loading {
 		return 0
 	}
 	start := time.Now()
@@ -78,7 +78,7 @@ func (s *mapStore) SweepExpired(sampleSize int, budget time.Duration) int {
 // passive half of expiry. The deletion is never propagated: replay and
 // replicas drop the key from the same absolute timestamp (MASTER-PLAN 4.4).
 func (s *mapStore) expireIfDue(key string, e *Entry) bool {
-	if e == nil || e.ExpireAt <= 0 {
+	if e == nil || e.ExpireAt <= 0 || s.loading {
 		return false
 	}
 	if e.ExpireAt > s.clock.NowMs() {
@@ -135,4 +135,40 @@ func (s *mapStore) TTLms(key string) (int64, TTLStatus) {
 		return 0, NoExpire
 	}
 	return e.ExpireAt - s.clock.NowMs(), HasExpire
+}
+
+// Loader is what startup recovery needs beyond the frozen Store interface.
+// The store returned by New implements it; like Counters it is reached by a
+// type assertion, so the frozen contract does not change.
+type Loader interface {
+	// SetLoading turns passive expiry and the sweep off (true) or back on
+	// (false). Redis does the same while it loads its files: a log replayed
+	// after a key's deadline must not drop the key halfway through, or a
+	// later record that touched it (PERSIST, RPUSH) would act on a key that
+	// still existed when that record was written.
+	SetLoading(on bool)
+	// DropExpired deletes every key whose expiry is at or before now,
+	// counts them in ExpiredKeys and returns how many it deleted. It is the
+	// "drop every key whose expire_at <= now" step of MASTER-PLAN 4.9.
+	DropExpired() int
+}
+
+var _ Loader = (*mapStore)(nil)
+
+// SetLoading implements Loader.
+func (s *mapStore) SetLoading(on bool) { s.loading = on }
+
+// DropExpired implements Loader.
+func (s *mapStore) DropExpired() int {
+	now := s.clock.NowMs()
+	n := 0
+	for key, at := range s.expires {
+		if at <= now {
+			delete(s.m, key)
+			delete(s.expires, key)
+			n++
+		}
+	}
+	s.expiredKeys += int64(n)
+	return n
 }
