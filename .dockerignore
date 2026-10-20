@@ -1,0 +1,7 @@
+# Build context for deploy/Dockerfile is the repository root. The image needs
+# only go.mod, cmd/ and internal/, so everything else stays out of the context.
+*
+!go.mod
+!cmd/
+!internal/
+**/*_test.go
