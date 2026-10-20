@@ -28,9 +28,11 @@ func setCommand(ctx *Ctx, args [][]byte) resp.Reply {
 }
 
 // GET k returns the string at k, nil when k is missing, and WRONGTYPE when k
-// holds a collection. Passive expiry happens inside Store.Lookup.
+// holds a collection. Passive expiry happens inside Store.Lookup. Each GET
+// counts as a keyspace hit or miss for INFO, as Redis counts its lookups.
 func getCommand(ctx *Ctx, args [][]byte) resp.Reply {
 	e, ok := ctx.Store.Lookup(string(args[1]))
+	countLookup(ctx, ok)
 	if !ok {
 		return resp.Nil
 	}

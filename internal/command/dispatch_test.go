@@ -34,10 +34,12 @@ func newCtx() *Ctx {
 func newCtxWithClock() (*Ctx, *storetest.FakeClock) {
 	clock := &storetest.FakeClock{}
 	clock.Set(testNowMs)
+	srv := server.New()
+	srv.SetStartMs(testNowMs)
 	return &Ctx{
 		Client: &server.Client{},
 		Store:  store.New(clock),
-		Srv:    server.New(),
+		Srv:    srv,
 		Now:    clock.NowMs(),
 	}, clock
 }
