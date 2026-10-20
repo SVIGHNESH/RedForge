@@ -144,6 +144,8 @@ No relative TTL is persisted or replicated anywhere; `EXPIRE` is rewritten to `P
 A key that expired while the server was down stays expired after recovery.
 
 Exactly three background goroutines are planned (fsync ticker, snapshot writer, compaction copier), none of which touches the live keyspace; each signals completion back through an `eventfd` in the epoll set.
+INFO reports a debug field, `goroutines` in the `Server` section, read from `runtime.NumGoroutine()`.
+It exists only so the 100-connection test can prove that open connections add no goroutines; it is not part of the Redis INFO format.
 
 ## Commands
 
