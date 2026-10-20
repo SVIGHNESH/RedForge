@@ -279,3 +279,11 @@ Each line below is a place where the merged code and MASTER-PLAN Section 4 disag
 - The `Appender` interface and the `NextSeq`, `CurrentSeq`, `SetSeq` methods were added by T0.08 and were not in MASTER-PLAN. They are frozen here as the only way to reach the sequence counter.
 - `TTLms` and `SweepExpired` have unnamed results in code. The meaning (`remainingMs, status` and `deleted`) is unchanged and is stated in the comments.
 - `SnapshotView` and `TTLStatus` were referenced but not defined in MASTER-PLAN. They are frozen as defined in `internal/store/types.go`.
+
+## Additions outside the frozen contract
+
+These came in with Phase 1 PRs.
+They extend the code without changing any signature above, so they are not frozen and may change without a unanimous PR.
+
+- `store.Counters` (T3.01, #93): an optional interface with `ExpiredKeys()` and `SweepDeleted()` for INFO. It sits beside `Store` instead of adding methods to it.
+- `Server.OnTick(fn func())` (T3.02, #94) replaces the single `Server.Tick` field with a list of hooks run every 100 ms on the loop thread. The AOF `everysec` request (T5.02) and the `BGSAVE` completion check (T6.03) register through it.
