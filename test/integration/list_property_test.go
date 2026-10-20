@@ -2,6 +2,7 @@ package integration
 
 import (
 	"fmt"
+	"github.com/SVIGHNESH/RedForge/internal/testutil"
 	"math/rand"
 	"reflect"
 	"strconv"
@@ -31,7 +32,7 @@ func TestListMixedEndProperty(t *testing.T) {
 }
 
 func runListProperty(t *testing.T, seed int64) {
-	c := newRESPClient(t, startServer(t))
+	c := testutil.Start(t).Client(t)
 	rng := rand.New(rand.NewSource(seed))
 	var model []string
 	fail := func(op int, format string, a ...any) {
@@ -57,7 +58,7 @@ func runListProperty(t *testing.T, seed int64) {
 					model = append(model, v)
 				}
 			}
-			if got := c.integer(args...); got != int64(len(model)) {
+			if got := c.MustInt(t, args...); got != int64(len(model)) {
 				fail(op, "%v replied %d, model length %d", args, got, len(model))
 			}
 		case 2, 3:
@@ -65,10 +66,10 @@ func runListProperty(t *testing.T, seed int64) {
 			if rng.Intn(2) == 1 {
 				cmd = "RPOP"
 			}
-			v := c.do(cmd, "l")
+			v := c.MustDo(t, cmd, "l")
 			if len(model) == 0 {
 				if v.Kind != resp.KindBulk || !v.Null {
-					fail(op, "%s on an empty list replied %s, want nil", cmd, show(v))
+					fail(op, "%s on an empty list replied %s, want nil", cmd, testutil.Show(v))
 				}
 				continue
 			}
@@ -79,7 +80,7 @@ func runListProperty(t *testing.T, seed int64) {
 				want, model = model[len(model)-1], model[:len(model)-1]
 			}
 			if v.Kind != resp.KindBulk || v.Null || string(v.Str) != want {
-				fail(op, "%s replied %s, model says %q", cmd, show(v), want)
+				fail(op, "%s replied %s, model says %q", cmd, testutil.Show(v), want)
 			}
 		}
 		if op%listCheckEvery == 0 {
@@ -89,12 +90,12 @@ func runListProperty(t *testing.T, seed int64) {
 	checkListAgainstModel(t, c, model, fail, listOps)
 }
 
-func checkListAgainstModel(t *testing.T, c *respClient, model []string, fail func(int, string, ...any), op int) {
+func checkListAgainstModel(t *testing.T, c *testutil.Client, model []string, fail func(int, string, ...any), op int) {
 	t.Helper()
-	if got := c.integer("LLEN", "l"); got != int64(len(model)) {
+	if got := c.MustInt(t, "LLEN", "l"); got != int64(len(model)) {
 		fail(op, "LLEN = %d, model length %d", got, len(model))
 	}
-	got := c.strings("LRANGE", "l", "0", "-1")
+	got := c.MustStrings(t, "LRANGE", "l", "0", "-1")
 	want := model
 	if want == nil {
 		want = []string{}
@@ -102,7 +103,7 @@ func checkListAgainstModel(t *testing.T, c *respClient, model []string, fail fun
 	if !reflect.DeepEqual(got, want) {
 		fail(op, "LRANGE = %v, model %v", got, want)
 	}
-	exists := c.integer("EXISTS", "l")
+	exists := c.MustInt(t, "EXISTS", "l")
 	if (exists == 1) != (len(model) > 0) {
 		fail(op, "EXISTS = %d with model length %d", exists, len(model))
 	}

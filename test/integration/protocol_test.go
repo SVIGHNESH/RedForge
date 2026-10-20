@@ -3,48 +3,21 @@ package integration
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/SVIGHNESH/RedForge/internal/command"
-	"github.com/SVIGHNESH/RedForge/internal/server"
-	"github.com/SVIGHNESH/RedForge/internal/store"
+	"github.com/SVIGHNESH/RedForge/internal/testutil"
 )
 
-// startServer runs the real loop and dispatcher on an ephemeral port inside
-// the test process. The ServerProcess harness (T1.02) will run the binary
-// instead; these protocol cases only need the loop and the dispatcher.
+// startServer runs the real binary through the T1.02 harness and returns its
+// address. These cases talk raw bytes, so they dial with net directly rather
+// than through testutil.Client.
 func startServer(t *testing.T) string {
 	t.Helper()
-	srv := server.New()
-	clock := store.RealClock{}
-	command.Install(srv, store.New(clock), clock)
-	if err := srv.Listen("127.0.0.1", 0); err != nil {
-		t.Fatalf("Listen: %v", err)
-	}
-	port, err := srv.Port()
-	if err != nil {
-		t.Fatalf("Port: %v", err)
-	}
-	done := make(chan error, 1)
-	go func() { done <- srv.Serve() }()
-	t.Cleanup(func() {
-		srv.Stop()
-		select {
-		case err := <-done:
-			if err != nil {
-				t.Errorf("Serve: %v", err)
-			}
-		case <-time.After(2 * time.Second):
-			t.Error("Serve did not return within 2s of Stop")
-		}
-		srv.Close()
-	})
-	return fmt.Sprintf("127.0.0.1:%d", port)
+	return testutil.Start(t).Addr()
 }
 
 func dial(t *testing.T, addr string) net.Conn {

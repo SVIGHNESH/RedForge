@@ -1,25 +1,24 @@
 package command
 
 import (
-	"bufio"
 	"fmt"
-	"io"
-	"net"
 	"sort"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/SVIGHNESH/RedForge/internal/resp"
 	"github.com/SVIGHNESH/RedForge/internal/server"
 	"github.com/SVIGHNESH/RedForge/internal/store"
+	"github.com/SVIGHNESH/RedForge/internal/testutil"
 )
 
 // startLoop runs the real event loop with the real dispatcher over a store on
 // the wall clock, on an ephemeral port. observe, if not nil, runs on the loop
 // thread every tick, which is the only race-free way for a test to read the
-// live store while Serve is running. This stands in for the testutil
-// ServerProcess harness (T1.02) until it lands.
+// live store while Serve is running, which is why these tests run the loop in
+// process instead of through testutil.Start.
 func startLoop(t *testing.T, observe func(st store.Store, srv *server.Server)) (string, store.Store) {
 	t.Helper()
 	clock := store.RealClock{}
@@ -48,62 +47,45 @@ func startLoop(t *testing.T, observe func(st store.Store, srv *server.Server)) (
 	return fmt.Sprintf("127.0.0.1:%d", port), st
 }
 
-// testConn is a minimal RESP client for in-process loop tests.
+// testConn adapts testutil.Client to the string replies these loop tests
+// compare against: the text of simple strings and integers, "-"-prefixed
+// errors, bulk payloads, and "(nil)" for a null bulk.
 type testConn struct {
-	t    *testing.T
-	conn net.Conn
-	r    *bufio.Reader
+	t *testing.T
+	c *testutil.Client
 }
 
 func dialLoop(t *testing.T, addr string) *testConn {
 	t.Helper()
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		t.Fatalf("dial: %v", err)
-	}
-	t.Cleanup(func() { conn.Close() })
-	return &testConn{t: t, conn: conn, r: bufio.NewReader(conn)}
+	return &testConn{t: t, c: testutil.MustDial(t, addr)}
 }
 
 // send writes raw protocol bytes, for pipelining many commands at once.
 func (c *testConn) send(raw string) {
 	c.t.Helper()
-	if _, err := io.WriteString(c.conn, raw); err != nil {
+	if err := c.c.Send([]byte(raw)); err != nil {
 		c.t.Fatalf("write: %v", err)
 	}
 }
 
-// read returns the next reply: the line without its type byte for simple
-// strings, errors and integers (errors keep a leading "-"), and the payload
-// for bulk strings ("(nil)" for a null bulk). Arrays are not needed here.
+// read returns the next reply rendered as a string.
 func (c *testConn) read() string {
 	c.t.Helper()
-	c.conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-	line, err := c.r.ReadString('\n')
+	v, err := c.c.Read()
 	if err != nil {
 		c.t.Fatalf("read: %v", err)
 	}
-	line = strings.TrimSuffix(line, "\r\n")
-	switch line[0] {
-	case '+', ':':
-		return line[1:]
-	case '-':
-		return line
-	case '$':
-		n, err := strconv.Atoi(line[1:])
-		if err != nil {
-			c.t.Fatalf("bad bulk header %q", line)
-		}
-		if n < 0 {
-			return "(nil)"
-		}
-		buf := make([]byte, n+2)
-		if _, err := io.ReadFull(c.r, buf); err != nil {
-			c.t.Fatalf("read bulk: %v", err)
-		}
-		return string(buf[:n])
+	switch {
+	case v.Kind == resp.KindError:
+		return "-" + string(v.Str)
+	case v.Kind == resp.KindInteger:
+		return strconv.FormatInt(v.Int, 10)
+	case v.Kind == resp.KindBulk && v.Null:
+		return "(nil)"
+	case v.Kind == resp.KindSimpleString || v.Kind == resp.KindBulk:
+		return string(v.Str)
 	}
-	c.t.Fatalf("unexpected reply %q", line)
+	c.t.Fatalf("unexpected reply %s", testutil.Show(v))
 	return ""
 }
 
