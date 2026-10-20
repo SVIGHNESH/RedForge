@@ -192,14 +192,6 @@ func TestForEachVisitsAllAndStops(t *testing.T) {
 	}
 }
 
-func TestSnapshotStubReturnsNil(t *testing.T) {
-	s, _ := newTestStore()
-	putString(s, "k", "v", 0)
-	if s.Snapshot() != nil {
-		t.Error("Snapshot stub != nil, want nil until T6.02")
-	}
-}
-
 func TestFakeClockMakesExpiryDeterministic(t *testing.T) {
 	s, clock := newTestStore()
 	putString(s, "k", "v", clock.NowMs()+1000)
