@@ -6,10 +6,29 @@ import (
 	"time"
 )
 
+// fakeSweepTime makes every elapsed-time check inside SweepExpired report
+// perCheck more than the last one, so a 1 ms budget always allows the same
+// number of sample rounds no matter how loaded the machine is.
+func fakeSweepTime(t *testing.T, perCheck time.Duration) {
+	t.Helper()
+	var calls time.Duration
+	prev := sweepElapsed
+	sweepElapsed = func(time.Time) time.Duration {
+		calls++
+		return calls * perCheck
+	}
+	t.Cleanup(func() { sweepElapsed = prev })
+}
+
+// roundsPerBudget is how many sample rounds a 1 ms budget allows when each
+// round is charged 200 us.
+const roundsPerBudget = 5
+
 // Ten thousand keys expiring at once are all reclaimed by repeated sweeps,
-// with every call bounded in wall time and nothing reclaimed early.
+// every call stops within its budget, and nothing is reclaimed early.
 func TestSweepReclaimsTenThousandKeysWithinBudget(t *testing.T) {
 	s, clock := newTestStore()
+	ms := s.(*mapStore)
 	const n = 10_000
 	for i := 0; i < n; i++ {
 		putString(s, "k"+strconv.Itoa(i), "v", clock.NowMs()+1)
@@ -22,10 +41,11 @@ func TestSweepReclaimsTenThousandKeysWithinBudget(t *testing.T) {
 	clock.Advance(time.Millisecond)
 	total, calls := 0, 0
 	for s.ExpiringLen() > 0 {
-		start := time.Now()
+		fakeSweepTime(t, 200*time.Microsecond)
+		before := ms.sweepRounds
 		total += s.SweepExpired(20, time.Millisecond)
-		if d := time.Since(start); d > 5*time.Millisecond {
-			t.Fatalf("sweep call %d took %v, want under 5 ms", calls, d)
+		if rounds := ms.sweepRounds - before; rounds > roundsPerBudget {
+			t.Fatalf("sweep call %d took %d rounds, want at most %d within the budget", calls, rounds, roundsPerBudget)
 		}
 		calls++
 		if calls > n {
@@ -47,19 +67,34 @@ func TestSweepReclaimsTenThousandKeysWithinBudget(t *testing.T) {
 // draining all keys in one call.
 func TestSweepStopsAtTheBudget(t *testing.T) {
 	s, clock := newTestStore()
+	ms := s.(*mapStore)
 	const n = 200_000
 	for i := 0; i < n; i++ {
 		putString(s, "k"+strconv.Itoa(i), "v", clock.NowMs()+1)
 	}
 	clock.Advance(time.Millisecond)
-	start := time.Now()
+	fakeSweepTime(t, 200*time.Microsecond)
 	got := s.SweepExpired(20, time.Millisecond)
-	elapsed := time.Since(start)
-	if got == 0 || got == n {
-		t.Fatalf("one budgeted sweep deleted %d of %d keys, want some but not all", got, n)
+	if ms.sweepRounds != roundsPerBudget {
+		t.Fatalf("budgeted sweep took %d rounds, want exactly %d", ms.sweepRounds, roundsPerBudget)
 	}
-	if elapsed > 5*time.Millisecond {
-		t.Fatalf("budgeted sweep ran %v, want close to 1 ms", elapsed)
+	if got != 20*roundsPerBudget {
+		t.Fatalf("one budgeted sweep deleted %d of %d keys, want %d", got, n, 20*roundsPerBudget)
+	}
+}
+
+// With the real clock the budget still stops a call that has a huge expired
+// set to chew through. There is no wall-time assertion: it guards against
+// the budget check being removed, not against a busy machine.
+func TestSweepBudgetHoldsOnTheRealClock(t *testing.T) {
+	s, clock := newTestStore()
+	const n = 200_000
+	for i := 0; i < n; i++ {
+		putString(s, "k"+strconv.Itoa(i), "v", clock.NowMs()+1)
+	}
+	clock.Advance(time.Millisecond)
+	if got := s.SweepExpired(20, time.Millisecond); got == 0 || got == n {
+		t.Fatalf("one budgeted sweep deleted %d of %d keys, want some but not all", got, n)
 	}
 }
 
