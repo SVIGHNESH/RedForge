@@ -3,7 +3,6 @@ package integration
 import (
 	"fmt"
 	"strconv"
-	"sync"
 	"testing"
 
 	"github.com/SVIGHNESH/RedForge/internal/testutil"
@@ -81,21 +80,5 @@ func TestSharedKeyPipelinedIncrLosesNoUpdates(t *testing.T) {
 // testutil.Client, and fails the test on the first error.
 func runClients(t *testing.T, p *testutil.ServerProcess, fn func(c *testutil.Client) error) {
 	t.Helper()
-	var wg sync.WaitGroup
-	errs := make(chan error, ccClients)
-	for i := 0; i < ccClients; i++ {
-		c := p.Client(t)
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if err := fn(c); err != nil {
-				errs <- err
-			}
-		}()
-	}
-	wg.Wait()
-	close(errs)
-	for err := range errs {
-		t.Fatal(err)
-	}
+	runN(t, p, ccClients, func(_ int, c *testutil.Client) error { return fn(c) })
 }
