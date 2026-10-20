@@ -42,6 +42,11 @@ func (s *mapStore) SweepDeleted() int64 { return s.sweepDeleted }
 // Expiry is judged by the injected clock; the budget is wall time, because it
 // bounds how long the loop is unavailable to clients. Deletions are counted
 // but never propagated (MASTER-PLAN Section 4.4).
+// sweepElapsed measures how long the current sweep call has run. Tests swap it
+// for a fake so the budget rule is checked by round count, not by how busy
+// the machine happens to be.
+var sweepElapsed = time.Since
+
 func (s *mapStore) SweepExpired(sampleSize int, budget time.Duration) int {
 	if sampleSize <= 0 || s.loading {
 		return 0
@@ -64,7 +69,7 @@ func (s *mapStore) SweepExpired(sampleSize int, budget time.Duration) int {
 			}
 		}
 		deleted += expired
-		if expired*4 <= sampled || time.Since(start) >= budget {
+		if expired*4 <= sampled || sweepElapsed(start) >= budget {
 			break
 		}
 	}
