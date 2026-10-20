@@ -40,6 +40,10 @@ type Ctx struct {
 	// Propagate. The dispatcher assigns the sequence number and fans it
 	// out after the handler returns a non-error reply.
 	pending [][]byte
+	// replaying is set by Replay. A replayed command applies its effect
+	// but never propagates, never consumes a sequence number and has no
+	// client to reply to.
+	replaying bool
 }
 
 // Propagate records the canonical write form of this command. A handler that

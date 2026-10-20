@@ -59,7 +59,9 @@ func setExpiry(ctx *Ctx, key []byte, at int64) resp.Reply {
 	if !ctx.Store.Exists(k) {
 		return resp.Integer(0)
 	}
-	if at <= ctx.Now {
+	// During replay a past deadline is stored, not acted on: recovery drops
+	// due keys in one pass afterwards and counts them as expired_keys.
+	if at <= ctx.Now && !ctx.replaying {
 		ctx.Store.Delete(k)
 		ctx.Propagate([]byte("DEL"), key)
 		return resp.Integer(1)
