@@ -64,6 +64,9 @@ type Server struct {
 	totalConnections   atomic.Int64
 	totalCommands      atomic.Int64
 	rejectedConnection atomic.Int64
+
+	// Stats are loop-thread counters that handlers update and INFO reads.
+	Stats Stats
 }
 
 // New returns a server that is not yet listening. Execute defaults to parsing
