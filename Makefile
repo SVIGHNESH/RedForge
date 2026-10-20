@@ -6,7 +6,7 @@ TESTFLAGS ?=
 DIAGRAMS := $(wildcard docs/diagrams/*.dot)
 DIAGRAM_PNGS := $(patsubst docs/diagrams/%.dot,docs/diagrams/out/%.png,$(DIAGRAMS))
 
-.PHONY: build test test-short lint bench clean diagrams rtm
+.PHONY: build test test-short lint bench clean diagrams rtm docker demo
 
 build:
 	go build -o $(BIN) ./cmd/redis-from-scratch
@@ -43,6 +43,15 @@ docs/diagrams/out/%.png: docs/diagrams/%.dot
 # Needs gh authenticated.
 rtm:
 	go run ./scripts/tasks/rtm > docs/RTM.md.tmp && mv docs/RTM.md.tmp docs/RTM.md
+
+# Build the server image (deploy/Dockerfile, context is the repo root).
+docker:
+	docker build -f deploy/Dockerfile -t redforge:latest .
+
+# Start the demo topology in the background; then
+#   docker compose -f deploy/docker-compose.yml run --rm cli PING
+demo:
+	docker compose -f deploy/docker-compose.yml up -d --build
 
 clean:
 	rm -rf bin/

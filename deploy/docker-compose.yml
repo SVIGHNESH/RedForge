@@ -1,0 +1,32 @@
+# RedForge demo topology (T11.01). Run from the repository root:
+#
+#   make demo                                             start the server
+#   docker compose -f deploy/docker-compose.yml run --rm cli PING
+#   docker compose -f deploy/docker-compose.yml down      stop (data volume kept)
+#
+# The cli service is in the "cli" profile, so `up` starts only the server and
+# `run cli` starts a throwaway redis-cli pointed at it.
+
+name: redforge
+
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: redforge:latest
+    ports:
+      - "6380:6380"
+    volumes:
+      - data:/data
+    restart: unless-stopped
+
+  cli:
+    image: redis:7
+    profiles: ["cli"]
+    entrypoint: ["redis-cli", "-h", "server", "-p", "6380"]
+    depends_on:
+      - server
+
+volumes:
+  data:
