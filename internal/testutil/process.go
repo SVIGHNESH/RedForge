@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -44,6 +46,7 @@ func Start(t testing.TB, flags ...string) *ServerProcess {
 		p.Kill()
 		if t.Failed() && p.out != nil {
 			t.Logf("server on port %d output:\n%s", p.Port, p.out.String())
+			saveLog(t, p)
 		}
 	})
 	p.launch(t)
@@ -168,6 +171,34 @@ func (p *ServerProcess) Info(t testing.TB, section string) map[string]string {
 	c := p.Client(t)
 	defer c.Close()
 	return c.Info(t, section).Values
+}
+
+// SkipIfShort skips a slow test under go test -short (make test-short). A
+// test is slow when it waits on the wall clock for more than 2 s; make test
+// and CI never pass -short, so nothing is skipped there.
+func SkipIfShort(t testing.TB, why string) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("slow test skipped under -short: " + why)
+	}
+}
+
+// saveLog writes a failed test's server output to $RFS_SERVER_LOG_DIR, which
+// CI uploads as an artifact. Without the variable it does nothing.
+func saveLog(t testing.TB, p *ServerProcess) {
+	dir := os.Getenv("RFS_SERVER_LOG_DIR")
+	if dir == "" {
+		return
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Logf("testutil: server log dir: %v", err)
+		return
+	}
+	name := strings.NewReplacer("/", "_", " ", "_").Replace(t.Name())
+	path := filepath.Join(dir, fmt.Sprintf("%s-%d.log", name, p.Port))
+	if err := os.WriteFile(path, []byte(p.out.String()), 0o644); err != nil {
+		t.Logf("testutil: write server log: %v", err)
+	}
 }
 
 // FreePort binds :0 on loopback, reads the port and releases it. Another
