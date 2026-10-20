@@ -110,4 +110,5 @@ func Install(s *server.Server, st store.Store, clock store.Clock) {
 		return Dispatch(ctx, args)
 	})
 	s.OnTick(func() { st.SweepExpired(sweepSample, sweepBudget) })
+	s.SetStartMs(clock.NowMs())
 }

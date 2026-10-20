@@ -70,6 +70,11 @@ type Server struct {
 
 	// Stats are loop-thread counters that handlers update and INFO reads.
 	Stats Stats
+
+	// infoProviders holds subsystem INFO fields by section name, and
+	// startMs the start time behind uptime_in_seconds. See info.go.
+	infoProviders map[string][]InfoProvider
+	startMs       int64
 }
 
 // New returns a server that is not yet listening. Execute defaults to parsing
