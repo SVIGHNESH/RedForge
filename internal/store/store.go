@@ -11,6 +11,10 @@ type mapStore struct {
 	expires        map[string]int64
 	clock          Clock
 	snapshotActive bool
+
+	// expiredKeys counts keys reclaimed because their expiry passed, by the
+	// passive path or the sweep. INFO reports it as expired_keys.
+	expiredKeys int64
 }
 
 // Compile-time proof that the frozen interface is satisfied.
@@ -27,21 +31,6 @@ func New(clock Clock) Store {
 		expires: make(map[string]int64),
 		clock:   clock,
 	}
-}
-
-// expireIfDue deletes key when its expiry has passed and reports whether it
-// did. Lookup, Mutable, Exists and Keys all funnel through here, which is the
-// whole passive-expiry path until T3.01 extends it with ExpiredCount.
-func (s *mapStore) expireIfDue(key string, e *Entry) bool {
-	if e == nil || e.ExpireAt <= 0 {
-		return false
-	}
-	if e.ExpireAt > s.clock.NowMs() {
-		return false
-	}
-	delete(s.m, key)
-	delete(s.expires, key)
-	return true
 }
 
 // Lookup returns the live entry for key, reclaiming it first when expired.
@@ -110,17 +99,6 @@ func (s *mapStore) Keys(pattern string) []string {
 	}
 	return out
 }
-
-// SetExpireAt is a T3.01 stub: it will write Entry.ExpireAt and expires[key].
-func (s *mapStore) SetExpireAt(key string, atMs int64) bool { return false }
-
-// Persist is a T3.01 stub: it will clear the TTL and report whether one was
-// removed.
-func (s *mapStore) Persist(key string) bool { return false }
-
-// TTLms is a T3.01 stub: it will report remaining ms with NoKey, NoExpire or
-// HasExpire.
-func (s *mapStore) TTLms(key string) (int64, TTLStatus) { return 0, NoKey }
 
 // Len is the number of stored keys, including expired-but-unvisited ones until
 // the sweep reclaims them.
