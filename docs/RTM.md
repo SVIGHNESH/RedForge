@@ -38,58 +38,58 @@ A ticked blocker (`#7 ✓`) is closed.
 | #7 | T0.07 Store types, Entry, Value, Clock, map-backed Store | M3 | Ritik | Ritik | #1 ✓ | #8 #28 #30 #32 #38 #41 #42 #48 #49 #63 | Done (PR #80) | [t0-07-store-types](tasks/t0-07-store-types.md) |
 | #8 | T0.08 Sequence counter and the Propagate hook | M7, M8 | Rajat | Vighnesh | #6 ✓, #7 ✓ | #11 #28 #32 #36 #39 #41 #42 #45 #65 #69 | Done (PR #81) | [t0-08-seq-and-propagate](tasks/t0-08-seq-and-propagate.md) |
 | #9 | T0.09 Client tooling smoke test | M1 | unassigned | Vivek | #6 ✓ | - | Ready | [t0-09-tooling-smoke-test](tasks/t0-09-tooling-smoke-test.md) |
-| #10 | T0.10 DECISIONS.md and first diagram drafts | M11 | Vighnesh, Vivek | Ritik | - | #25 | In review: PR #92 | [t0-10-decisions-and-diagram-drafts](tasks/t0-10-decisions-and-diagram-drafts.md) |
-| #11 | T0.11 Contracts freeze | - | Vighnesh | all four must approve | #2 ✓, #8 ✓ | - | In review: PR #84, stacked on #83 | [t0-11-contracts-freeze](tasks/t0-11-contracts-freeze.md) |
+| #10 | T0.10 DECISIONS.md and first diagram drafts | M11 | Vighnesh, Vivek | Ritik | - | #25 | Done (PR #92) | [t0-10-decisions-and-diagram-drafts](tasks/t0-10-decisions-and-diagram-drafts.md) |
+| #11 | T0.11 Contracts freeze | - | Vighnesh | all four must approve | #2 ✓, #8 ✓ | - | Done (PR #84) | [t0-11-contracts-freeze](tasks/t0-11-contracts-freeze.md) |
 | #12 | T10.01 Install the Redis baseline and capture the spec | M10 | Ritik | Rajat | #59 (Ritik) | #13 #14 #15 | Blocked on Ritik | [t10-01-baseline-and-spec](tasks/t10-01-baseline-and-spec.md) |
 | #13 | T10.02 Run Scenarios 1 to 4 on both servers | M10 | Ritik | Rajat | #12 (Ritik), #57 (Ritik) | #16 #17 | Blocked on Ritik | [t10-02-run-scenarios-1-to-4](tasks/t10-02-run-scenarios-1-to-4.md) |
 | #14 | T10.03 Run Scenario 5: client sweep and fsync comparison | M10 | Ritik | Rajat | #12 (Ritik), #57 (Ritik) | #16 | Blocked on Ritik | [t10-03-run-scenario-5-and-fsync](tasks/t10-03-run-scenario-5-and-fsync.md) |
 | #15 | T10.04 Run the KEYS stall measurement | M10 | Ritik | Rajat | #12 (Ritik), #61 (Ritik) | - | Blocked on Ritik | [t10-04-run-keys-stall](tasks/t10-04-run-keys-stall.md) |
 | #16 | T10.05 Attribution experiments | M10 | Vighnesh, Rajat | Ritik | #13 (Ritik), #14 (Ritik) | #17 | Blocked on Ritik | [t10-05-attribution-experiments](tasks/t10-05-attribution-experiments.md) |
 | #17 | T10.06 Write the evaluation chapter | M10 | Ritik | Rajat | #13 (Ritik), #16 (Vighnesh, Rajat), #60 (Ritik), #62 (Ritik) | #26 | Blocked on Ritik, Vighnesh, Rajat | [t10-06-write-evaluation-chapter](tasks/t10-06-write-evaluation-chapter.md) |
-| #18 | T1.01 RESP2 edge cases and protocol errors | M1 | Vivek | Vighnesh | #5 ✓, #6 ✓ | - | In review: PR #89, stacked on #83 | [t1-01-resp-edge-cases](tasks/t1-01-resp-edge-cases.md) |
+| #18 | T1.01 RESP2 edge cases and protocol errors | M1 | Vivek | Vighnesh | #5 ✓, #6 ✓ | - | Done (PR #89) | [t1-01-resp-edge-cases](tasks/t1-01-resp-edge-cases.md) |
 | #19 | T1.02 Test harness: ServerProcess | M9 | Vivek | Rajat | #1 ✓ | #21 #22 #31 #52 | Ready | [t1-02-testutil-server-process](tasks/t1-02-testutil-server-process.md) |
 | #20 | T1.03 Test harness: minimal RESP client | M9 | Vivek | Rajat | #2 ✓, #3 ✓ | #21 #35 #52 #56 | Ready | [t1-03-testutil-resp-client](tasks/t1-03-testutil-resp-client.md) |
 | #21 | T1.04 100-connection goroutine-count test | M2 | Vivek | Vighnesh | #19 (Vivek), #20 (Vivek) | - | Blocked on Vivek | [t1-04-hundred-connections-test](tasks/t1-04-hundred-connections-test.md) |
 | #22 | T1.05 One-command test runner and CI with redis-tools | M9 | Vivek | Rajat | #1 ✓, #19 (Vivek) | #57 | Blocked on Vivek | [t1-05-make-test-and-ci](tasks/t1-05-make-test-and-ci.md) |
 | #23 | T11.01 Dockerfile and Docker Compose | M11 | Vivek | Rajat | #1 ✓ | #71 | Ready | [t11-01-docker](tasks/t11-01-docker.md) |
 | #24 | T11.02 README | M11 | Vighnesh | Ritik | - | - | Ready | [t11-02-readme](tasks/t11-02-readme.md) |
-| #25 | T11.03 Final diagrams | M11 | Vivek | Vighnesh | #10 (Vighnesh, Vivek), #71 (Vivek) | #26 | Blocked on Vighnesh, Vivek | [t11-03-final-diagrams](tasks/t11-03-final-diagrams.md) |
+| #25 | T11.03 Final diagrams | M11 | Vivek | Vighnesh | #10 ✓, #71 (Vivek) | #26 | Blocked on Vivek | [t11-03-final-diagrams](tasks/t11-03-final-diagrams.md) |
 | #26 | T11.04 Final report assembly | M11 | Vighnesh, Ritik, Vivek, Rajat | all | #17 (Ritik), #25 (Vivek) | - | Blocked on Ritik, Vivek | [t11-04-final-report](tasks/t11-04-final-report.md) |
-| #27 | T11.05 Viva ledger and demonstration rehearsals | M11 | unassigned | Vighnesh | - | - | In review: PR #99 | [t11-05-viva-ledger-and-rehearsals](tasks/t11-05-viva-ledger-and-rehearsals.md) |
-| #28 | T2.01 SET, GET, DEL, EXISTS | M3 | Vighnesh | Rajat | #6 ✓, #7 ✓, #8 ✓ | #29 #31 #32 | In review: PR #86, stacked on #83 | [t2-01-set-get-del-exists](tasks/t2-01-set-get-del-exists.md) |
-| #29 | T2.02 INCR | M3 | Vighnesh | Rajat | #28 (Vighnesh) | #35 | In review: PR #91, stacked on #88 | [t2-02-incr](tasks/t2-02-incr.md) |
-| #30 | T2.03 KEYS | M3 | Vighnesh | Rajat | #7 ✓ | #31 #61 | In review: PR #88, stacked on #86 | [t2-03-keys](tasks/t2-03-keys.md) |
-| #31 | T2.04 redis-cli session test for strings and keyspace | M3 | Vighnesh | Rajat | #19 (Vivek), #28 (Vighnesh), #30 (Vighnesh) | - | Blocked on Vivek, Vighnesh | [t2-04-strings-cli-session-test](tasks/t2-04-strings-cli-session-test.md) |
-| #32 | T3.01 Expiry storage, EXPIRE, TTL, PERSIST, PEXPIREAT, passive reclamation | M4 | Vighnesh | Rajat | #7 ✓, #8 ✓, #28 (Vighnesh) | #33 #34 #55 | In review: PR #93, stacked on #91 | [t3-01-expire-ttl-persist](tasks/t3-01-expire-ttl-persist.md) |
-| #33 | T3.02 Active expiry sweep on the loop tick | M4 | Vighnesh | Rajat | #4 ✓, #32 (Vighnesh) | #34 | In review: PR #94, stacked on #93 | [t3-02-active-sweep](tasks/t3-02-active-sweep.md) |
-| #34 | T3.03 Expiry invariant tests | M9 | Vighnesh | Rajat | #32 (Vighnesh), #33 (Vighnesh) | - | In review: PR #95, stacked on #94 | [t3-03-expiry-unit-tests](tasks/t3-03-expiry-unit-tests.md) |
-| #35 | T3.04 Shared-key INCR lost-update test (CC3) | M9 | Vighnesh | Rajat | #20 (Vivek), #29 (Vighnesh) | - | Blocked on Vivek, Vighnesh | [t3-04-incr-lost-update-test](tasks/t3-04-incr-lost-update-test.md) |
-| #36 | T3.05 INFO | M11, M7 | Vighnesh | Rajat | #6 ✓, #8 ✓ | - | In review: PR #96, stacked on #95 | [t3-05-info](tasks/t3-05-info.md) |
-| #37 | T3.06 COMMAND and stats counters | M11 | Vighnesh | Rajat | #6 ✓ | - | In review: PR #97, stacked on #96 | [t3-06-command-and-counters](tasks/t3-06-command-and-counters.md) |
-| #38 | T4.01 ListVal deque | M5 | Ritik | Vighnesh | #7 ✓ | #39 | In review: PR #85, stacked on #83 | [t4-01-list-deque](tasks/t4-01-list-deque.md) |
-| #39 | T4.02 List commands | M5 | Ritik | Vighnesh | #6 ✓, #8 ✓, #38 (Ritik) | #40 #48 #49 | Blocked on Ritik | [t4-02-list-commands](tasks/t4-02-list-commands.md) |
-| #40 | T4.03 List mixed-end property test | M9 | Ritik | Vighnesh | #39 (Ritik) | - | Blocked on Ritik | [t4-03-list-property-test](tasks/t4-03-list-property-test.md) |
-| #41 | T4.04 Hash commands | M5 | Ritik | Vighnesh | #6 ✓, #7 ✓, #8 ✓ | #43 #48 | In review: PR #87, stacked on #83 | [t4-04-hash-commands](tasks/t4-04-hash-commands.md) |
-| #42 | T4.05 Set commands | M6 | Ritik | Vighnesh | #6 ✓, #7 ✓, #8 ✓ | #43 #48 | In review: PR #90, stacked on #83 | [t4-05-set-commands](tasks/t4-05-set-commands.md) |
-| #43 | T4.06 Hash and set invariant tests | M9 | Ritik | Vighnesh | #41 (Ritik), #42 (Ritik) | - | Blocked on Ritik | [t4-06-hash-set-invariant-tests](tasks/t4-06-hash-set-invariant-tests.md) |
+| #27 | T11.05 Viva ledger and demonstration rehearsals | M11 | unassigned | Vighnesh | - | - | Ready | [t11-05-viva-ledger-and-rehearsals](tasks/t11-05-viva-ledger-and-rehearsals.md) |
+| #28 | T2.01 SET, GET, DEL, EXISTS | M3 | Vighnesh | Rajat | #6 ✓, #7 ✓, #8 ✓ | #29 #31 #32 | Done (PR #86) | [t2-01-set-get-del-exists](tasks/t2-01-set-get-del-exists.md) |
+| #29 | T2.02 INCR | M3 | Vighnesh | Rajat | #28 ✓ | #35 | Done (PR #91) | [t2-02-incr](tasks/t2-02-incr.md) |
+| #30 | T2.03 KEYS | M3 | Vighnesh | Rajat | #7 ✓ | #31 #61 | Done (PR #88) | [t2-03-keys](tasks/t2-03-keys.md) |
+| #31 | T2.04 redis-cli session test for strings and keyspace | M3 | Vighnesh | Rajat | #19 (Vivek), #28 ✓, #30 ✓ | - | Blocked on Vivek | [t2-04-strings-cli-session-test](tasks/t2-04-strings-cli-session-test.md) |
+| #32 | T3.01 Expiry storage, EXPIRE, TTL, PERSIST, PEXPIREAT, passive reclamation | M4 | Vighnesh | Rajat | #7 ✓, #8 ✓, #28 ✓ | #33 #34 #55 | Done (PR #93) | [t3-01-expire-ttl-persist](tasks/t3-01-expire-ttl-persist.md) |
+| #33 | T3.02 Active expiry sweep on the loop tick | M4 | Vighnesh | Rajat | #4 ✓, #32 ✓ | #34 | Done (PR #94) | [t3-02-active-sweep](tasks/t3-02-active-sweep.md) |
+| #34 | T3.03 Expiry invariant tests | M9 | Vighnesh | Rajat | #32 ✓, #33 ✓ | - | Done (PR #95) | [t3-03-expiry-unit-tests](tasks/t3-03-expiry-unit-tests.md) |
+| #35 | T3.04 Shared-key INCR lost-update test (CC3) | M9 | Vighnesh | Rajat | #20 (Vivek), #29 ✓ | - | Blocked on Vivek | [t3-04-incr-lost-update-test](tasks/t3-04-incr-lost-update-test.md) |
+| #36 | T3.05 INFO | M11, M7 | Vighnesh | Rajat | #6 ✓, #8 ✓ | - | Done (PR #96) | [t3-05-info](tasks/t3-05-info.md) |
+| #37 | T3.06 COMMAND and stats counters | M11 | Vighnesh | Rajat | #6 ✓ | - | Done (PR #97) | [t3-06-command-and-counters](tasks/t3-06-command-and-counters.md) |
+| #38 | T4.01 ListVal deque | M5 | Ritik | Vighnesh | #7 ✓ | #39 | Done (PR #85) | [t4-01-list-deque](tasks/t4-01-list-deque.md) |
+| #39 | T4.02 List commands | M5 | Ritik | Vighnesh | #6 ✓, #8 ✓, #38 ✓ | #40 #48 #49 | In review: PR #100 | [t4-02-list-commands](tasks/t4-02-list-commands.md) |
+| #40 | T4.03 List mixed-end property test | M9 | Ritik | Vighnesh | #39 (Ritik) | - | In review: PR #101, stacked on #100 | [t4-03-list-property-test](tasks/t4-03-list-property-test.md) |
+| #41 | T4.04 Hash commands | M5 | Ritik | Vighnesh | #6 ✓, #7 ✓, #8 ✓ | #43 #48 | Done (PR #87) | [t4-04-hash-commands](tasks/t4-04-hash-commands.md) |
+| #42 | T4.05 Set commands | M6 | Ritik | Vighnesh | #6 ✓, #7 ✓, #8 ✓ | #43 #48 | Done (PR #90) | [t4-05-set-commands](tasks/t4-05-set-commands.md) |
+| #43 | T4.06 Hash and set invariant tests | M9 | Ritik | Vighnesh | #41 ✓, #42 ✓ | - | In review: PR #102 | [t4-06-hash-set-invariant-tests](tasks/t4-06-hash-set-invariant-tests.md) |
 | #44 | T5.01 Log record codec | M7 | Rajat | Ritik | #1 ✓, #3 ✓ | #45 #46 #68 | Ready | [t5-01-aof-record-codec](tasks/t5-01-aof-record-codec.md) |
 | #45 | T5.02 Log writer with fsync policies, wired to Propagate | M7 | Rajat | Ritik | #8 ✓, #44 (Rajat) | #46 | Blocked on Rajat | [t5-02-aof-writer-fsync](tasks/t5-02-aof-writer-fsync.md) |
 | #46 | T5.03 Replay, torn-record truncation, INFO fields | M7 | Rajat | Ritik | #6 ✓, #44 (Rajat), #45 (Rajat) | #47 | Blocked on Rajat | [t5-03-aof-replay-truncation](tasks/t5-03-aof-replay-truncation.md) |
 | #47 | T5.04 Startup: open log, replay, resume sequence | M7 | Rajat | Ritik | #46 (Rajat) | #51 | Blocked on Rajat | [t5-04-startup-log-recovery](tasks/t5-04-startup-log-recovery.md) |
-| #48 | T6.01 Snapshot codec | M8 | Rajat | Ritik | #7 ✓, #39 (Ritik), #41 (Ritik), #42 (Ritik) | #50 #51 #64 #68 | Blocked on Ritik | [t6-01-snapshot-codec](tasks/t6-01-snapshot-codec.md) |
+| #48 | T6.01 Snapshot codec | M8 | Rajat | Ritik | #7 ✓, #39 (Ritik), #41 ✓, #42 ✓ | #50 #51 #64 #68 | Blocked on Ritik | [t6-01-snapshot-codec](tasks/t6-01-snapshot-codec.md) |
 | #49 | T6.02 Store.Snapshot clone and copy-on-write in Mutable | M8 | Rajat | Ritik | #7 ✓, #39 (Ritik) | #50 | Blocked on Ritik | [t6-02-store-snapshot-cow](tasks/t6-02-store-snapshot-cow.md) |
 | #50 | T6.03 BGSAVE handler, writer goroutine, atomic rename, orphan cleanup | M8 | Rajat | Ritik | #4 ✓, #48 (Rajat), #49 (Rajat) | #51 #53 #67 #69 | Blocked on Rajat | [t6-03-bgsave](tasks/t6-03-bgsave.md) |
 | #51 | T6.04 Full startup recovery: snapshot plus log tail | M8 | Rajat | Ritik | #47 (Rajat), #48 (Rajat), #50 (Rajat) | #67 | Blocked on Rajat | [t6-04-startup-recovery-sequence](tasks/t6-04-startup-recovery-sequence.md) |
 | #52 | T7.01 Crash-recovery tests CR1 (log only) and CR2 (snapshot plus tail) | M9 | Vivek | Rajat | #19 (Vivek), #20 (Vivek) | #53 #54 #55 | Blocked on Vivek | [t7-01-crash-tests-cr1-cr2](tasks/t7-01-crash-tests-cr1-cr2.md) |
 | #53 | T7.02 Crash-recovery test CR3: SIGKILL during BGSAVE | M9 | Vivek | Rajat | #50 (Rajat), #52 (Vivek) | - | Blocked on Rajat, Vivek | [t7-02-crash-test-cr3-kill-during-bgsave](tasks/t7-02-crash-test-cr3-kill-during-bgsave.md) |
 | #54 | T7.03 Crash-recovery test CR4: hand-truncated log record | M9 | Vivek | Rajat | #52 (Vivek) | - | Blocked on Vivek | [t7-03-crash-test-cr4-torn-record](tasks/t7-03-crash-test-cr4-torn-record.md) |
-| #55 | T7.04 Expiry tests EX1 to EX3 (across restart and passive) | M9 | Vivek | Rajat | #32 (Vighnesh), #52 (Vivek) | - | Blocked on Vighnesh, Vivek | [t7-04-expiry-across-restart-tests](tasks/t7-04-expiry-across-restart-tests.md) |
+| #55 | T7.04 Expiry tests EX1 to EX3 (across restart and passive) | M9 | Vivek | Rajat | #32 ✓, #52 (Vivek) | - | Blocked on Vivek | [t7-04-expiry-across-restart-tests](tasks/t7-04-expiry-across-restart-tests.md) |
 | #56 | T7.05 Concurrency tests CC1 (disjoint writes) and CC2 (pipelined ordering) | M9 | Vivek | Rajat | #20 (Vivek) | - | Blocked on Vivek | [t7-05-concurrency-tests-cc1-cc2](tasks/t7-05-concurrency-tests-cc1-cc2.md) |
 | #57 | T8.01 Benchmark runner and scenario config | M10 | Ritik | Rajat | #22 (Vivek) | #13 #14 #60 #61 | Blocked on Vivek | [t8-01-bench-runner](tasks/t8-01-bench-runner.md) |
 | #58 | T8.02 CPU and memory sampler | M10 | Ritik | Rajat | - | #60 | Ready | [t8-02-bench-sampler](tasks/t8-02-bench-sampler.md) |
 | #59 | T8.03 Machine specification capture | M10 | Ritik | Rajat | - | #12 | Ready | [t8-03-bench-spec-capture](tasks/t8-03-bench-spec-capture.md) |
 | #60 | T8.04 Report tool: medians, spread, Markdown tables | M10 | Ritik | Rajat | #57 (Ritik), #58 (Ritik) | #17 #62 | Blocked on Ritik | [t8-04-bench-report-tool](tasks/t8-04-bench-report-tool.md) |
-| #61 | T8.05 KEYS event-loop stall measurement | M10 | Ritik | Rajat | #30 (Vighnesh), #57 (Ritik) | #15 | Blocked on Vighnesh, Ritik | [t8-05-keys-stall-measurement](tasks/t8-05-keys-stall-measurement.md) |
+| #61 | T8.05 KEYS event-loop stall measurement | M10 | Ritik | Rajat | #30 ✓, #57 (Ritik) | #15 | Blocked on Ritik | [t8-05-keys-stall-measurement](tasks/t8-05-keys-stall-measurement.md) |
 | #62 | T8.06 Charts from report.csv | M10 | Ritik | Rajat | #60 (Ritik) | #17 | Blocked on Ritik | [t8-06-bench-charts](tasks/t8-06-bench-charts.md) |
 | #63 | T9.01 Skiplist for sorted sets (Stretch S2) | S2 | Ritik | Vighnesh | #7 ✓ | #64 | Ready | [t9-01-skiplist](tasks/t9-01-skiplist.md) |
 | #64 | T9.02 ZADD, ZSCORE, ZRANK, ZRANGE and persistence support (Stretch S2) | S2 | Ritik | Vighnesh | #48 (Rajat), #63 (Ritik) | - | Blocked on Rajat, Ritik | [t9-02-zset-commands](tasks/t9-02-zset-commands.md) |
@@ -105,10 +105,10 @@ A ticked blocker (`#7 ✓`) is closed.
 
 | Status | Issues |
 |---|---|
-| Done | 8 |
-| In review | 15 |
-| Ready | 11 |
-| Blocked | 37 |
+| Done | 22 |
+| In review | 3 |
+| Ready | 12 |
+| Blocked | 34 |
 
 ## 4. Who is holding whom
 
@@ -117,8 +117,8 @@ Open issues that cannot start until this person's open issues merge.
 | Person | Blocked issues waiting on them |
 |---|---|
 | Rajat | #17 #45 #46 #47 #50 #51 #53 #64 #67 #68 #69 #71 |
-| Ritik | #12 #13 #14 #15 #16 #17 #26 #39 #40 #43 #48 #49 #60 #61 #62 #64 #71 |
-| Vighnesh | #17 #25 #31 #35 #55 #61 #69 #70 #71 |
+| Ritik | #12 #13 #14 #15 #16 #17 #26 #48 #49 #60 #61 #62 #64 #71 |
+| Vighnesh | #17 #69 #70 #71 |
 | Vivek | #21 #22 #25 #26 #31 #35 #52 #53 #54 #55 #56 #57 #71 |
 
 ## 5. Cross-check: task file against issue links
