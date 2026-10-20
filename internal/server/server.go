@@ -51,6 +51,13 @@ type Server struct {
 	// they were registered with OnTick.
 	tickers []func()
 
+	// fdHandlers maps extra descriptors (the BGSAVE eventfd) to the
+	// callback the loop runs when one becomes readable. See RegisterFd.
+	fdHandlers map[int]func()
+
+	// saver writes BGSAVE snapshots; nil until main installs one.
+	saver BackgroundSaver
+
 	// Appenders receives every propagated write with its sequence number,
 	// in loop order. T5.02 registers the AOF writer here and T9.07 the
 	// replication fan-out. Tests register a memoryAppender.
@@ -136,6 +143,11 @@ func (s *Server) Listen(bind string, port int) error {
 	}
 
 	s.lfd, s.epfd = lfd, epfd
+	for fd := range s.fdHandlers {
+		if err := s.addFd(fd); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -174,6 +186,10 @@ func (s *Server) Serve() error {
 			fd := int(ev.Fd)
 			if fd == s.lfd {
 				s.acceptReady()
+				continue
+			}
+			if h, ok := s.fdHandlers[fd]; ok {
+				h()
 				continue
 			}
 			c := s.clients[fd]
