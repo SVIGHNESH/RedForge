@@ -7,9 +7,11 @@ import "github.com/SVIGHNESH/RedForge/internal/resp"
 const (
 	msgWrongType = "WRONGTYPE Operation against a key holding the wrong kind of value"
 	msgNotInt    = "ERR value is not an integer or out of range"
+	msgOverflow  = "ERR increment or decrement would overflow"
 )
 
 var (
 	errWrongType = resp.Error(msgWrongType)
 	errNotInt    = resp.Error(msgNotInt)
+	errOverflow  = resp.Error(msgOverflow)
 )
