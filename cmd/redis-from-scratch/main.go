@@ -51,7 +51,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	srv.RegisterInfo("Persistence", recovered.Log.Info)
+	srv.RegisterInfo("Persistence", recovered.Info)
 
 	aofw, err := aof.Open(*dir, policy, clock.NowMs)
 	if err != nil {
@@ -69,6 +69,9 @@ func main() {
 		os.Exit(1)
 	}
 	defer saver.Close()
+	if recovered.Snapshot == recovery.SnapshotOK {
+		saver.Loaded(recovered.SnapshotSeq)
+	}
 	srv.SetBackgroundSaver(saver)
 	srv.RegisterInfo("Persistence", saver.Info)
 
