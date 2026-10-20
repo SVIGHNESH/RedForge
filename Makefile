@@ -1,15 +1,25 @@
 BIN := bin/redis-from-scratch
+# Extra go test flags, e.g. make test TESTFLAGS=-v (CI uses it to prove no
+# test was skipped).
+TESTFLAGS ?=
 
 DIAGRAMS := $(wildcard docs/diagrams/*.dot)
 DIAGRAM_PNGS := $(patsubst docs/diagrams/%.dot,docs/diagrams/out/%.png,$(DIAGRAMS))
 
-.PHONY: build test lint bench clean diagrams rtm
+.PHONY: build test test-short lint bench clean diagrams rtm
 
 build:
 	go build -o $(BIN) ./cmd/redis-from-scratch
 
-test:
-	go test ./...
+# test builds the binary first so compile errors surface before the slower
+# integration run; the integration tests build their own copy through
+# testutil.BuildOnce, so they never depend on bin/.
+test: build
+	go test -race -count=1 $(TESTFLAGS) ./...
+
+# test-short skips the slow tests (anything that sleeps for seconds).
+test-short: build
+	go test -race -count=1 -short $(TESTFLAGS) ./...
 
 lint:
 	@out="$$(gofmt -l .)"; \

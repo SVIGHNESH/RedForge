@@ -99,6 +99,7 @@ func (c *testConn) do(cmd string) string {
 // Ten thousand keys with EXPIRE 1 that are never read again must be
 // reclaimed by the tick sweep alone, and PING must stay fast while it runs.
 func TestActiveSweepReclaimsUntouchedKeysAndPingStaysFast(t *testing.T) {
+	testutil.SkipIfShort(t, "waits about 3 s of wall clock for 10000 keys to expire")
 	type view struct{ keys, swept int64 }
 	views := make(chan view, 1)
 	addr, _ := startLoop(t, func(st store.Store, _ *server.Server) {

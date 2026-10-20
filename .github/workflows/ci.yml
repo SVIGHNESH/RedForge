@@ -8,14 +8,20 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
+      # setup-go caches the module and build caches keyed on go.sum and the
+      # Go version.
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
           check-latest: true
+          cache: true
 
+      # redis-cli is needed by the compatibility tests; with it installed
+      # nothing in the suite skips.
       - name: Install redis-tools
         run: sudo apt-get update && sudo apt-get install -y redis-tools
 
@@ -23,7 +29,23 @@ jobs:
         run: make lint
 
       - name: Test
-        run: make test
+        env:
+          RFS_SERVER_LOG_DIR: ${{ runner.temp }}/server-logs
+        run: |
+          set -o pipefail
+          make test TESTFLAGS=-v 2>&1 | tee test.log
 
-      - name: Build
-        run: make build
+      - name: No skipped tests
+        run: |
+          if grep -- '--- SKIP' test.log; then
+            echo "the tests above were skipped in CI"
+            exit 1
+          fi
+
+      - name: Upload server logs from failed tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs
+          path: ${{ runner.temp }}/server-logs
+          if-no-files-found: ignore
