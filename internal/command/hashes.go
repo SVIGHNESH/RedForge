@@ -13,20 +13,18 @@ func init() {
 	register(&Command{Name: "HGETALL", Arity: 2, Flags: ReadOnly, Handler: hgetallCommand})
 }
 
-// hashWrongType is the MASTER-PLAN 4.11 wording. It is local to the hash
-// handlers so this file does not depend on the string commands landing
-// first; the copies can be folded into one shared constant later.
-var hashWrongType = resp.Error("WRONGTYPE Operation against a key holding the wrong kind of value")
-
 // hashLookup returns the hash stored at key for reading. A missing key is
 // (nil, nil); a key of another type is (nil, WRONGTYPE).
+// Only read commands call it, so it counts keyspace_hits and
+// keyspace_misses the way Redis counts read lookups.
 func hashLookup(ctx *Ctx, key []byte) (*store.HashVal, resp.Reply) {
 	e, ok := ctx.Store.Lookup(string(key))
+	countLookup(ctx, ok)
 	if !ok {
 		return nil, nil
 	}
 	if e.Type != store.THash {
-		return nil, hashWrongType
+		return nil, errWrongType
 	}
 	return e.Val.(*store.HashVal), nil
 }
@@ -39,7 +37,7 @@ func hashMutable(ctx *Ctx, key []byte) (*store.HashVal, resp.Reply) {
 		return nil, nil
 	}
 	if e.Type != store.THash {
-		return nil, hashWrongType
+		return nil, errWrongType
 	}
 	return e.Val.(*store.HashVal), nil
 }
