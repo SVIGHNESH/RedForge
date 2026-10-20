@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/SVIGHNESH/RedForge/internal/server"
+	"github.com/SVIGHNESH/RedForge/internal/store"
+	"github.com/SVIGHNESH/RedForge/internal/storetest"
 )
 
 func reply(t *testing.T, ctx *Ctx, args ...string) string {
@@ -16,9 +18,28 @@ func reply(t *testing.T, ctx *Ctx, args ...string) string {
 	return string(Dispatch(ctx, argv).AppendTo(nil))
 }
 
+// testNowMs is the fixed instant every unit test starts at.
+const testNowMs = 1700000000000
+
+// newCtx returns a Ctx over an empty store whose fake clock reads testNowMs,
+// so Ctx.Now and the store's passive expiry agree.
 func newCtx() *Ctx {
-	srv := server.New()
-	return &Ctx{Client: &server.Client{}, Srv: srv, Now: 1700000000000}
+	ctx, _ := newCtxWithClock()
+	return ctx
+}
+
+// newCtxWithClock is newCtx plus the fake clock, for tests that move time.
+// A test that advances the clock also refreshes ctx.Now, as the loop would
+// for the next command.
+func newCtxWithClock() (*Ctx, *storetest.FakeClock) {
+	clock := &storetest.FakeClock{}
+	clock.Set(testNowMs)
+	return &Ctx{
+		Client: &server.Client{},
+		Store:  store.New(clock),
+		Srv:    server.New(),
+		Now:    clock.NowMs(),
+	}, clock
 }
 
 func TestPingEchoQuit(t *testing.T) {
@@ -74,18 +95,40 @@ func TestUnknownCommandWording(t *testing.T) {
 	}
 }
 
-// HELLO is deliberately absent: the matrix in MASTER-PLAN Section 1.2 is the
-// whole command set, and a stray registration is a scope violation.
-func TestOnlyTheDeclaredCommandsExist(t *testing.T) {
-	want := map[string]bool{"PING": true, "ECHO": true, "QUIT": true}
+// commandMatrix is MASTER-PLAN Section 1.2 verbatim, plus the two internal
+// additions it allows: PEXPIREAT (the logged form of EXPIRE) and QUIT.
+var commandMatrix = map[string]bool{
+	"PING": true, "ECHO": true, "INFO": true, "COMMAND": true, "BGSAVE": true,
+	"SET": true, "GET": true, "DEL": true, "EXISTS": true, "INCR": true, "KEYS": true,
+	"EXPIRE": true, "TTL": true, "PERSIST": true,
+	"LPUSH": true, "RPUSH": true, "LPOP": true, "RPOP": true, "LLEN": true, "LRANGE": true,
+	"HSET": true, "HGET": true, "HDEL": true, "HLEN": true, "HGETALL": true,
+	"SADD": true, "SREM": true, "SISMEMBER": true, "SMEMBERS": true, "SINTER": true,
+	// stretch
+	"ZADD": true, "ZSCORE": true, "ZRANK": true, "ZRANGE": true,
+	"MULTI": true, "EXEC": true, "DISCARD": true,
+	"SUBSCRIBE": true, "UNSUBSCRIBE": true, "PUBLISH": true,
+	"REPLICAOF": true,
+	// internal
+	"PEXPIREAT": true, "QUIT": true,
+}
+
+// Every registered command must come from the matrix: a stray registration,
+// HELLO included, is a scope violation. The check is a subset test rather
+// than an exact list so each command PR does not have to edit this file.
+func TestOnlyMatrixCommandsAreRegistered(t *testing.T) {
 	for _, name := range Names() {
-		if !want[name] {
-			t.Errorf("unexpected command registered: %q", name)
+		if !commandMatrix[name] {
+			t.Errorf("command %q is registered but is not in MASTER-PLAN Section 1.2", name)
 		}
-		delete(want, name)
 	}
-	for name := range want {
-		t.Errorf("missing command: %q", name)
+	for _, name := range []string{"PING", "ECHO", "QUIT"} {
+		if _, ok := Lookup(name); !ok {
+			t.Errorf("missing command: %q", name)
+		}
+	}
+	if _, ok := Lookup("HELLO"); ok {
+		t.Error("HELLO must not be registered")
 	}
 }
 

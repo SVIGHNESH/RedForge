@@ -6,6 +6,7 @@ import (
 
 	"github.com/SVIGHNESH/RedForge/internal/resp"
 	"github.com/SVIGHNESH/RedForge/internal/server"
+	"github.com/SVIGHNESH/RedForge/internal/store"
 )
 
 // maxUnknownArgs is how many arguments Redis quotes back in the unknown
@@ -91,10 +92,11 @@ func sanitise(arg []byte) []byte {
 }
 
 // Install points the event loop at this dispatcher. It builds one Ctx per
-// command, with Now read on the loop thread.
-func Install(s *server.Server, now func() int64) {
+// command over the shared keyspace st, with Now read once from clock on the
+// loop thread so every step of one command sees the same instant.
+func Install(s *server.Server, st store.Store, clock store.Clock) {
 	s.SetCommand(func(srv *server.Server, c *server.Client, args [][]byte) resp.Reply {
-		ctx := &Ctx{Client: c, Srv: srv, Now: now()}
+		ctx := &Ctx{Client: c, Store: st, Srv: srv, Now: clock.NowMs()}
 		return Dispatch(ctx, args)
 	})
 }

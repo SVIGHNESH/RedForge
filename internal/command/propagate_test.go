@@ -30,7 +30,7 @@ func (m *memoryAppender) Append(seq uint64, args [][]byte) error {
 }
 
 // registerTestCommand adds a temporary command for one test and returns a
-// cleanup func. It keeps TestOnlyTheDeclaredCommandsExist green.
+// cleanup func. Cleanup keeps TestOnlyMatrixCommandsAreRegistered green.
 func registerTestCommand(t *testing.T, cmd *Command) {
 	t.Helper()
 	name := cmd.Name
