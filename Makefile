@@ -3,7 +3,7 @@ BIN := bin/redis-from-scratch
 DIAGRAMS := $(wildcard docs/diagrams/*.dot)
 DIAGRAM_PNGS := $(patsubst docs/diagrams/%.dot,docs/diagrams/out/%.png,$(DIAGRAMS))
 
-.PHONY: build test lint bench clean diagrams
+.PHONY: build test lint bench clean diagrams rtm
 
 build:
 	go build -o $(BIN) ./cmd/redis-from-scratch
@@ -28,6 +28,11 @@ docs/diagrams/out/%.png: docs/diagrams/%.dot
 	@dot -Tpng -Gdpi=150 $< -o $@ 2> $@.warn; status=$$?; \
 	if [ $$status -ne 0 ] || [ -s $@.warn ]; then cat $@.warn; rm -f $@.warn; exit 1; fi; \
 	rm -f $@.warn; echo "rendered $@"
+
+# Regenerate the requirements traceability matrix from the GitHub issues.
+# Needs gh authenticated.
+rtm:
+	go run ./scripts/tasks/rtm > docs/RTM.md.tmp && mv docs/RTM.md.tmp docs/RTM.md
 
 clean:
 	rm -rf bin/
