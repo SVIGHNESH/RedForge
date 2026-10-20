@@ -192,18 +192,9 @@ func TestForEachVisitsAllAndStops(t *testing.T) {
 	}
 }
 
-func TestExpiryStubsReturnZeroValues(t *testing.T) {
+func TestRemainingStubsReturnZeroValues(t *testing.T) {
 	s, _ := newTestStore()
 	putString(s, "k", "v", 0)
-	if s.SetExpireAt("k", 123) {
-		t.Error("SetExpireAt stub = true, want false until T3.01")
-	}
-	if s.Persist("k") {
-		t.Error("Persist stub = true, want false until T3.01")
-	}
-	if _, st := s.TTLms("k"); st != NoKey {
-		t.Errorf("TTLms stub status = %v, want NoKey until T3.01", st)
-	}
 	if s.SweepExpired(20, time.Millisecond) != 0 {
 		t.Error("SweepExpired stub != 0, want 0 until T3.02")
 	}
