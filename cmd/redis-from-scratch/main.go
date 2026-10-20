@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/SVIGHNESH/RedForge/internal/aof"
 	"github.com/SVIGHNESH/RedForge/internal/command"
 	"github.com/SVIGHNESH/RedForge/internal/server"
 	"github.com/SVIGHNESH/RedForge/internal/store"
@@ -16,6 +17,8 @@ func main() {
 		showVersion = flag.Bool("version", false, "print the server version and exit")
 		bind        = flag.String("bind", "127.0.0.1", "address to bind")
 		port        = flag.Int("port", 6380, "port to listen on")
+		dir         = flag.String("dir", "./data", "persistence directory")
+		appendfsync = flag.String("appendfsync", "everysec", "log fsync policy: always, everysec or no")
 	)
 	flag.Parse()
 
@@ -27,8 +30,23 @@ func main() {
 	// The wall clock is the only production clock (MASTER-PLAN 3.4). The
 	// store and the dispatcher share it so passive expiry and Ctx.Now agree.
 	clock := store.RealClock{}
+	policy, err := aof.ParsePolicy(*appendfsync)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
 	srv := server.New()
 	command.Install(srv, store.New(clock), clock)
+
+	aofw, err := aof.Open(*dir, policy, clock.NowMs)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer aofw.Close()
+	srv.Appenders = append(srv.Appenders, aofw)
+	srv.OnTick(aofw.Tick)
+	srv.RegisterInfo("Persistence", aofw.Info)
 	if err := srv.Listen(*bind, *port); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
