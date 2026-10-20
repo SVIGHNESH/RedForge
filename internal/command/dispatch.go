@@ -3,6 +3,7 @@ package command
 import (
 	"log"
 	"strings"
+	"time"
 
 	"github.com/SVIGHNESH/RedForge/internal/resp"
 	"github.com/SVIGHNESH/RedForge/internal/server"
@@ -91,12 +92,22 @@ func sanitise(arg []byte) []byte {
 	return out
 }
 
+// Active expiry parameters from MASTER-PLAN Section 4 (P3.2): sample 20 keys
+// per round and spend at most 1 ms of loop time per tick.
+const (
+	sweepSample = 20
+	sweepBudget = time.Millisecond
+)
+
 // Install points the event loop at this dispatcher. It builds one Ctx per
 // command over the shared keyspace st, with Now read once from clock on the
-// loop thread so every step of one command sees the same instant.
+// loop thread so every step of one command sees the same instant. It also
+// registers the active expiry sweep on the loop tick, so expired keys that
+// are never touched again are reclaimed without any extra goroutine.
 func Install(s *server.Server, st store.Store, clock store.Clock) {
 	s.SetCommand(func(srv *server.Server, c *server.Client, args [][]byte) resp.Reply {
 		ctx := &Ctx{Client: c, Store: st, Srv: srv, Now: clock.NowMs()}
 		return Dispatch(ctx, args)
 	})
+	s.OnTick(func() { st.SweepExpired(sweepSample, sweepBudget) })
 }
