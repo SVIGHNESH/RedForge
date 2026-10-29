@@ -15,12 +15,13 @@ Every correctness item of the proposal, M1 to M9, is merged: the protocol, the e
 
 | Done | Left |
 |---|---|
-| RESP2 codec, pipelining, inline commands, Redis-exact protocol errors | Benchmark runner and evaluation against official Redis (T8.01, T8.04 to T8.06, T10.x) |
+| RESP2 codec, pipelining, inline commands, Redis-exact protocol errors | Evaluation against official Redis: report tool, KEYS stall, charts, the runs (T8.04 to T8.06, T10.x) |
 | Single-threaded `epoll` loop, 100+ connections on one thread | Stretch: log compaction, transactions, sorted sets, Pub/Sub, replication (T9.x) |
 | Strings, keyspace, expiry (passive and active), lists, hashes, sets | README, final diagrams and report (T11.02 to T11.04) |
 | Append-only log with three fsync policies, torn-record truncation | |
 | `BGSAVE` by clone plus copy-on-write, atomic rename, recovery | |
 | Crash, expiry, concurrency and property tests, CI with zero skips | |
+| Benchmark runner with matched settings for both servers, CPU and memory sampler, machine spec capture | |
 
 The live picture, issue by issue, is the [requirements traceability matrix](docs/RTM.md): what each issue serves, what blocks it, and whose work it waits on.
 
@@ -160,9 +161,15 @@ The image is a static binary on `scratch`, built with `golang:1.22` to match `go
 bench/spec.sh > spec.txt           # CPU, cores, RAM, kernel, governor, Go and Redis versions
 bench/sample.sh <pid> <out.csv>    # CPU and memory of a process every 100 ms, as CSV
 bench/peaks.sh <out.csv>           # peak CPU and memory from that file
+bench/run.sh --target rfs|redis --scenario N   # one evaluation scenario against either server
+bench/run.sh --target rfs|redis --all          # every scenario in bench/scenarios.conf
 ```
 
-The runner that drives `redis-benchmark` against both servers (T8.01) is not written yet, because it needs official Redis installed as the baseline.
+`bench/run.sh` runs the scenarios of synopsis Table 7.1, which are defined as data in `bench/scenarios.conf`.
+Each sub-case gets a warm-up and three timed runs, each on a freshly started server with an empty directory, pinned with `taskset` (server on CPU 2, `redis-benchmark` on CPUs 0 and 1).
+Results go to `bench/results/<date>/<target>/`: one CSV per run with `redis-benchmark`'s columns plus p99.9, the full benchmark output, CPU and memory samples, the server log, and a `cmdline.txt` with versions and every exact command line.
+The per-run server directories go in `bench/results/.work`, never on tmpfs, because fsync does nothing there.
+The evaluation needs official Redis 7.x as `redis-server`; the runner warns if it finds something else, such as Valkey, which Arch now installs as `redis`.
 
 ## Design
 
@@ -213,7 +220,7 @@ internal/snapshot        snapshot format, writer, loader
 internal/recovery        startup sequence: snapshot, log tail, expired keys
 internal/testutil        ServerProcess harness and RESP client for tests
 test/integration         redis-cli, crash, expiry, concurrency, property tests
-bench/                   machine spec and CPU/memory sampling scripts
+bench/                   benchmark runner, scenario config, machine spec, CPU/memory sampling
 deploy/                  Dockerfile and docker-compose.yml
 scripts/tasks/           GitHub issue sync and the RTM generator
 ```

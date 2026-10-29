@@ -13,7 +13,9 @@ A Go program reads a results directory and emits the comparison tables the repor
 ## Context you need
 
 `redis-benchmark --csv` output columns in 7.x: `test`, `rps`, `avg_latency_ms`, `min_latency_ms`, `p50_latency_ms`, `p95_latency_ms`, `p99_latency_ms`, `max_latency_ms`.
-p99.9 is not in the CSV. Use `--precision 3` and parse the human output's latency histogram, or pass `-l`? Neither gives p99.9 directly. Use `redis-benchmark ... 2>&1` without `--csv` for one of the three runs and parse the `99.900%` line from its latency percentile summary, which 7.x prints. Record which run supplied p99.9.
+p99.9 is not in `--csv` output, so `bench/run.sh` (T8.01) takes every run without `--csv` and writes its own CSV with those columns plus `p99_9_latency_ms`, `p99_9_percentile` (the percentile step used, 99.902) and `latency_capped`.
+`latency_capped` is 1 when the run hit redis-benchmark's 3 s histogram ceiling; print its latency cells as `> 3000` rather than as numbers.
+Read `runs.csv` in each target directory to find a run's CSV, sample and peaks files instead of parsing file names; for a repeated key the last row wins.
 
 ## Steps
 
