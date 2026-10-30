@@ -172,8 +172,11 @@ func TestEverySecSyncsFromTheGoroutineOncePerSecond(t *testing.T) {
 	now.Add(100)
 	w.Tick()
 	waitFor(t, func() bool { return ff.syncs.Load() == 2 })
-	if got := w.lastFsyncMs.Load(); got != now.Load() {
-		t.Fatalf("lastFsyncMs = %d, want %d", got, now.Load())
+	// The fake Sync bumps the counter before the goroutine stores
+	// lastFsyncMs, so wait for the timestamp too instead of reading it once.
+	waitFor(t, func() bool { return w.lastFsyncMs.Load() == now.Load() })
+	if got := ff.syncs.Load(); got != 2 {
+		t.Fatalf("syncs after the second request = %d, want 2", got)
 	}
 	w.Close()
 }
